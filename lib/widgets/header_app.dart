@@ -10,13 +10,13 @@ class HeaderApp extends StatelessWidget implements PreferredSizeWidget {
       centerTitle: true,
       backgroundColor: const Color(0xFF1E88E5),
       title: Image.asset(
-        '/images/kamati_logo.png', // Ruta corregida
+        'assets/images/kamati_logo.png', // Quitar la barra inicial '/'
         height: 40,
         fit: BoxFit.contain,
       ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(16),
+          bottom: Radius.circular(10),
         ),
       ),
     );
