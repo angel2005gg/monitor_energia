@@ -17,6 +17,11 @@ class _HomeScreenState extends State<HomeScreen> {
   String potencia = 'Cargando...';
   bool isLoading = true;
   DateTime? ultimaActualizacion;
+  
+  // Variables para almacenar los últimos datos válidos
+  String? ultimaEnergia;
+  String? ultimaPotencia;
+  bool hayConexion = true;
 
   @override
   void initState() {
@@ -27,15 +32,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> cargarDatos() async {
     setState(() {
       isLoading = true;
+      if (hayConexion) {
+        // Solo limpiamos los datos si no estamos en estado de reconexión
+        energia = '--';
+        potencia = '--';
+      }
     });
     
     try {
-      // Limpiar datos actuales para mostrar que se están refrescando
-      setState(() {
-        energia = '--';
-        potencia = '--';
-      });
-      
       // Pequeña pausa para asegurar que se vea la actualización
       await Future.delayed(const Duration(milliseconds: 300));
       
@@ -47,11 +51,16 @@ class _HomeScreenState extends State<HomeScreen> {
       // Capturar la hora actual explícitamente
       final ahora = DateTime.now();
       
+      // Guardamos los últimos valores válidos
+      ultimaEnergia = '${datos['energiaGeneradaHoy']} kWh';
+      ultimaPotencia = '${datos['potenciaInstantanea']} kW';
+      
       setState(() {
-        energia = '${datos['energiaGeneradaHoy']} kWh';
-        potencia = '${datos['potenciaInstantanea']} kW';
+        energia = ultimaEnergia!;
+        potencia = ultimaPotencia!;
         ultimaActualizacion = ahora;
         isLoading = false;
+        hayConexion = true;
         
         // Debug para verificar la hora
         print('Hora actualizada: ${_formatFecha(ahora)}');
@@ -71,17 +80,29 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       
       setState(() {
-        energia = 'Error';
-        potencia = 'Error';
+        if (ultimaEnergia != null && ultimaPotencia != null) {
+          // Mostrar últimos datos válidos
+          energia = ultimaEnergia!;
+          potencia = ultimaPotencia!;
+        } else {
+          // Si es primera carga y falla
+          energia = 'No disponible';
+          potencia = 'No disponible';
+        }
         isLoading = false;
+        hayConexion = false;
       });
       
-      // Mostrar mensaje de error
+      // Mensaje de error más amigable para el usuario
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al actualizar datos: $e'),
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
+          content: const Text('No se puede conectar al servidor. Mostrando últimos datos disponibles.'),
+          action: SnackBarAction(
+            label: 'Reintentar',
+            onPressed: cargarDatos,
+          ),
+          duration: const Duration(seconds: 5),
+          backgroundColor: Colors.orange,
         ),
       );
     }
@@ -107,15 +128,21 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  gradient: hayConexion 
+                    ? const LinearGradient(
+                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                    : const LinearGradient(
+                      colors: [Color(0xFF9E9E9E), Color(0xFF616161)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.3),
+                      color: hayConexion ? Colors.blue.withOpacity(0.3) : Colors.grey.withOpacity(0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     )
@@ -126,31 +153,65 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Estado Actual',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Estado Actual',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: hayConexion 
+                                ? Colors.green.withOpacity(0.8)
+                                : Colors.orange.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                hayConexion 
+                                  ? Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    )
+                                  : const Icon(Icons.wifi_off, color: Colors.white, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                  hayConexion ? 'Online' : 'Sin conexión',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _buildInfoCircle('Energía', energia, Colors.orange),
-                          _buildInfoCircle('Potencia', potencia, Colors.lightGreenAccent),
+                          _buildInfoCircle('Energía', energia, hayConexion ? Colors.orange : Colors.grey),
+                          _buildInfoCircle('Potencia', potencia, hayConexion ? Colors.lightGreenAccent : Colors.grey),
                         ],
                       ),
-                      if (ultimaActualizacion != null) ... [
-                        const SizedBox(height: 16),
-                        Center(
-                          child: Text(
-                            'Actualizado: ${_formatFecha(ultimaActualizacion!)}',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: Text(
+                          hayConexion 
+                              ? 'Actualizado: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "Cargando..."}'
+                              : 'Último dato disponible: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "No disponible"}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                      ]
+                      ),
                     ],
                   ),
                 ),
