@@ -30,19 +30,60 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     
     try {
+      // Limpiar datos actuales para mostrar que se están refrescando
+      setState(() {
+        energia = '--';
+        potencia = '--';
+      });
+      
+      // Pequeña pausa para asegurar que se vea la actualización
+      await Future.delayed(const Duration(milliseconds: 300));
+      
       final datos = await ApiService.obtenerDatos();
+      
+      // Verificar que el widget siga montado antes de actualizar el estado
+      if (!mounted) return;
+      
+      // Capturar la hora actual explícitamente
+      final ahora = DateTime.now();
+      
       setState(() {
         energia = '${datos['energiaGeneradaHoy']} kWh';
         potencia = '${datos['potenciaInstantanea']} kW';
-        ultimaActualizacion = DateTime.now();
+        ultimaActualizacion = ahora;
         isLoading = false;
+        
+        // Debug para verificar la hora
+        print('Hora actualizada: ${_formatFecha(ahora)}');
       });
+      
+      // Mostrar confirmación de actualización
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Datos actualizados: ${_formatFecha(ahora)}'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
     } catch (e) {
+      // Verificar que el widget siga montado antes de actualizar el estado
+      if (!mounted) return;
+      
       setState(() {
         energia = 'Error';
         potencia = 'Error';
         isLoading = false;
       });
+      
+      // Mostrar mensaje de error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al actualizar datos: $e'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -262,6 +303,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatFecha(DateTime fecha) {
-    return '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}:${fecha.second.toString().padLeft(2, '0')}';
+    // Determinar si es AM o PM
+    final bool isAM = fecha.hour < 12;
+    
+    // Convertir la hora de 24h a 12h
+    final int hour12 = fecha.hour > 12 ? fecha.hour - 12 : (fecha.hour == 0 ? 12 : fecha.hour);
+    
+    // Formatear la hora con AM/PM
+    return '${hour12}:${fecha.minute.toString().padLeft(2, '0')}:${fecha.second.toString().padLeft(2, '0')} ${isAM ? 'AM' : 'PM'}';
   }
 }
