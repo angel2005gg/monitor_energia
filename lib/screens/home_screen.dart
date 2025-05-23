@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../widgets/dato_card.dart';
 import '../widgets/header_app.dart';
 import '../widgets/graficas_panel.dart';
+import '../widgets/medidor_analogico.dart'; // Añadir esta línea
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -181,16 +182,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // MANTENER spaceBetween
                         children: [
                           const Text(
-                            'Estado Actual',
+                            'Potencia Actual', // SOLO CAMBIAR EL TEXTO
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          // MANTENER TODO EL INDICADOR DE ESTADO
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -223,13 +225,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildInfoCircle('Energía', energia, hayConexion ? Colors.orange : Colors.grey),
-                          _buildInfoCircle('Potencia', potencia, hayConexion ? Colors.lightGreenAccent : Colors.grey),
-                        ],
+                      
+                      // Reemplazado por el medidor analógico
+                      Center(
+                        child: MedidorAnalogico(
+                          valor: double.tryParse(potencia.split(' ')[0]) ?? 0.0,
+                          capacidadMaxima: 12.78,
+                          unidad: 'kW',
+                        ),
                       ),
+                      
                       const SizedBox(height: 16),
                       Center(
                         child: Text(
