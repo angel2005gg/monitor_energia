@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../widgets/dato_card.dart';
 import '../widgets/header_app.dart';
 import '../widgets/graficas_panel.dart';
-import '../widgets/medidor_analogico.dart'; // Añadir esta línea
+import '../widgets/medidor_analogico.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -32,63 +32,61 @@ class _HomeScreenState extends State<HomeScreen> {
   
   bool hayConexion = true;
 
+  // AÑADIR: PageController para el carrusel
+  PageController _pageController = PageController();
+  int _currentPage = 0;
+
   @override
   void initState() {
     super.initState();
     cargarDatos();
   }
 
+  // AÑADIR: Dispose del PageController
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   Future<void> cargarDatos() async {
     setState(() {
       isLoading = true;
       if (hayConexion) {
-        // Solo limpiamos los datos si no estamos en estado de reconexión
         energia = '--';
         potencia = '--';
       }
     });
     
     try {
-      // Pequeña pausa para asegurar que se vea la actualización
       await Future.delayed(const Duration(milliseconds: 300));
       
       final datos = await ApiService.obtenerDatos();
       
-      // Verificar que el widget siga montado antes de actualizar el estado
       if (!mounted) return;
       
-      // Zona horaria explícita para Colombia
       final ahora = DateTime.now().subtract(const Duration(hours: 5));
       
-      // Guardamos los últimos valores válidos
       ultimaEnergia = '${datos['energiaGeneradaHoy']} kWh';
       ultimaPotencia = '${datos['potenciaInstantanea']} kW';
-      
-      // Guardamos los nuevos campos
       ultimaEnergiaEsteMes = datos['energiaEsteMes'] ?? 'No disponible';
       ultimaEnergiaTotal = datos['energiaTotal'] ?? 'No disponible';
       
-      // Imprimir los nuevos datos en consola para verificar
       print('Energia este mes: ${datos['energiaEsteMes']}');
       print('Energia total: ${datos['energiaTotal']}');
       
       setState(() {
         energia = ultimaEnergia!;
         potencia = ultimaPotencia!;
-        
-        // Actualizamos las variables de estado con los nuevos datos
         energiaEsteMes = ultimaEnergiaEsteMes!;
         energiaTotal = ultimaEnergiaTotal!;
-        
         ultimaActualizacion = ahora;
         isLoading = false;
         hayConexion = true;
         
-        // Debug para verificar la hora
         print('Hora actualizada: ${_formatFecha(ahora)}');
       });
       
-      // Mostrar confirmación de actualización
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Datos actualizados: ${_formatFecha(ahora)}'),
@@ -98,20 +96,15 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       
     } catch (e) {
-      // Verificar que el widget siga montado antes de actualizar el estado
       if (!mounted) return;
       
       setState(() {
         if (ultimaEnergia != null && ultimaPotencia != null) {
-          // Mostrar últimos datos válidos
           energia = ultimaEnergia!;
           potencia = ultimaPotencia!;
-          
-          // También mantenemos los últimos valores de los nuevos campos
           if (ultimaEnergiaEsteMes != null) energiaEsteMes = ultimaEnergiaEsteMes!;
           if (ultimaEnergiaTotal != null) energiaTotal = ultimaEnergiaTotal!;
         } else {
-          // Si es primera carga y falla
           energia = 'No disponible';
           potencia = 'No disponible';
           energiaEsteMes = 'No disponible';
@@ -121,7 +114,6 @@ class _HomeScreenState extends State<HomeScreen> {
         hayConexion = false;
       });
       
-      // Mensaje de error más amigable para el usuario
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('No se puede conectar al servidor. Mostrando últimos datos disponibles.'),
@@ -152,104 +144,38 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Panel de resumen principal
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  gradient: hayConexion 
-                    ? const LinearGradient(
-                      colors: [Color(0xFF0A2E73), Color(0xFF083A5C)], // CAMBIADO: usando el color especificado
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                    : const LinearGradient(
-                      colors: [Color(0xFF9E9E9E), Color(0xFF616161)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: hayConexion ? Color(0xFF0A2E73).withOpacity(0.3) : Colors.grey.withOpacity(0.3), // CAMBIADO: sombra con el nuevo color
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
+              // CARRUSEL DEL PANEL PRINCIPAL
+              SizedBox(
+                height: 350, // Altura fija para el carrusel
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (int page) {
+                    setState(() {
+                      _currentPage = page;
+                    });
+                  },
+                  children: [
+                    // PÁGINA 1: Panel original con medidor
+                    _buildPanelPrincipal(),
+                    
+                    // PÁGINA 2: Panel duplicado (por ahora igual)
+                    _buildPanelSecundario(),
                   ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // MANTENER spaceBetween
-                        children: [
-                          const Text(
-                            'Potencia Actual', // SOLO CAMBIAR EL TEXTO
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          // MANTENER TODO EL INDICADOR DE ESTADO
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: hayConexion 
-                                ? Colors.green.withOpacity(0.8)
-                                : Colors.orange.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                hayConexion 
-                                  ? Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    )
-                                  : const Icon(Icons.wifi_off, color: Colors.white, size: 16),
-                                const SizedBox(width: 4),
-                                Text(
-                                  hayConexion ? 'Online' : 'Sin conexión',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      // Reemplazado por el medidor analógico
-                      Center(
-                        child: MedidorAnalogico(
-                          valor: double.tryParse(potencia.split(' ')[0]) ?? 0.0,
-                          capacidadMaxima: 12.78,
-                          unidad: 'kW',
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      Center(
-                        child: Text(
-                          hayConexion 
-                              ? 'Actualizado: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "Cargando..."}'
-                              : 'Último dato disponible: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "No disponible"}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
               
-              // Tarjetas de datos detallados
+              // INDICADORES DEL CARRUSEL
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildIndicator(0),
+                  const SizedBox(width: 8),
+                  _buildIndicator(1),
+                ],
+              ),
+              
+              // Tarjetas de datos detallados (MANTENER TODO IGUAL)
               const SizedBox(height: 24),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -285,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               
-              // Panel para gráficas
+              // Panel para gráficas (MANTENER TODO IGUAL)
               const SizedBox(height: 24),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -320,6 +246,195 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   
+  // NUEVO: Panel principal (página 1 del carrusel)
+  Widget _buildPanelPrincipal() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: hayConexion 
+          ? const LinearGradient(
+            colors: [Color(0xFF0A2E73), Color(0xFF083A5C)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+          : const LinearGradient(
+            colors: [Color(0xFF9E9E9E), Color(0xFF616161)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: hayConexion ? Color(0xFF0A2E73).withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Potencia Actual',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: hayConexion 
+                      ? Colors.green.withOpacity(0.8)
+                      : Colors.orange.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      hayConexion 
+                        ? Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        : const Icon(Icons.wifi_off, color: Colors.white, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        hayConexion ? 'Online' : 'Sin conexión',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            // Medidor analógico
+            Center(
+              child: MedidorAnalogico(
+                valor: double.tryParse(potencia.split(' ')[0]) ?? 0.0,
+                capacidadMaxima: 12.78,
+                unidad: 'kW',
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                hayConexion 
+                    ? 'Actualizado: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "Cargando..."}'
+                    : 'Último dato disponible: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "No disponible"}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // NUEVO: Panel secundario (página 2 del carrusel) - por ahora igual
+  Widget _buildPanelSecundario() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: hayConexion 
+          ? const LinearGradient(
+            colors: [Color(0xFF0A2E73), Color(0xFF083A5C)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+          : const LinearGradient(
+            colors: [Color(0xFF9E9E9E), Color(0xFF616161)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: hayConexion ? Color(0xFF0A2E73).withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Panel Adicional',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 40),
+            
+            // Por ahora, contenido de placeholder
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.dashboard,
+                    color: Colors.white.withOpacity(0.7),
+                    size: 80,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Contenido adicional\npronto disponible',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // NUEVO: Indicadores del carrusel
+  Widget _buildIndicator(int index) {
+    return GestureDetector(
+      onTap: () {
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      },
+      child: Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: _currentPage == index 
+            ? const Color(0xFF0A2E73)
+            : Colors.grey.shade300,
+        ),
+      ),
+    );
+  }
+  
+  // MANTENER TODOS LOS MÉTODOS EXISTENTES IGUAL
   Widget _buildInfoCircle(String title, String value, Color color) {
     return Column(
       children: [
@@ -400,13 +515,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatFecha(DateTime fecha) {
-    // Determinar si es AM o PM
     final bool isAM = fecha.hour < 12;
-    
-    // Convertir la hora de 24h a 12h
     final int hour12 = fecha.hour > 12 ? fecha.hour - 12 : (fecha.hour == 0 ? 12 : fecha.hour);
-    
-    // Formatear la hora con AM/PM
     return '${hour12}:${fecha.minute.toString().padLeft(2, '0')}:${fecha.second.toString().padLeft(2, '0')} ${isAM ? 'AM' : 'PM'}';
   }
 }
