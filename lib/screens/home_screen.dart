@@ -15,12 +15,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String energia = 'Cargando...';
   String potencia = 'Cargando...';
+  
+  // Nuevas variables para los campos adicionales
+  String energiaEsteMes = '';
+  String energiaTotal = '';
+  
   bool isLoading = true;
   DateTime? ultimaActualizacion;
   
   // Variables para almacenar los últimos datos válidos
   String? ultimaEnergia;
   String? ultimaPotencia;
+  String? ultimaEnergiaEsteMes;
+  String? ultimaEnergiaTotal;
+  
   bool hayConexion = true;
 
   @override
@@ -48,19 +56,29 @@ class _HomeScreenState extends State<HomeScreen> {
       // Verificar que el widget siga montado antes de actualizar el estado
       if (!mounted) return;
       
-      // Cambiar esto:
-      // final ahora = DateTime.now().toLocal();
-      
-      // Por esto (zona horaria explícita para Colombia):
+      // Zona horaria explícita para Colombia
       final ahora = DateTime.now().subtract(const Duration(hours: 5));
       
       // Guardamos los últimos valores válidos
       ultimaEnergia = '${datos['energiaGeneradaHoy']} kWh';
       ultimaPotencia = '${datos['potenciaInstantanea']} kW';
       
+      // Guardamos los nuevos campos
+      ultimaEnergiaEsteMes = datos['energiaEsteMes'] ?? 'No disponible';
+      ultimaEnergiaTotal = datos['energiaTotal'] ?? 'No disponible';
+      
+      // Imprimir los nuevos datos en consola para verificar
+      print('Energia este mes: ${datos['energiaEsteMes']}');
+      print('Energia total: ${datos['energiaTotal']}');
+      
       setState(() {
         energia = ultimaEnergia!;
         potencia = ultimaPotencia!;
+        
+        // Actualizamos las variables de estado con los nuevos datos
+        energiaEsteMes = ultimaEnergiaEsteMes!;
+        energiaTotal = ultimaEnergiaTotal!;
+        
         ultimaActualizacion = ahora;
         isLoading = false;
         hayConexion = true;
@@ -87,10 +105,16 @@ class _HomeScreenState extends State<HomeScreen> {
           // Mostrar últimos datos válidos
           energia = ultimaEnergia!;
           potencia = ultimaPotencia!;
+          
+          // También mantenemos los últimos valores de los nuevos campos
+          if (ultimaEnergiaEsteMes != null) energiaEsteMes = ultimaEnergiaEsteMes!;
+          if (ultimaEnergiaTotal != null) energiaTotal = ultimaEnergiaTotal!;
         } else {
           // Si es primera carga y falla
           energia = 'No disponible';
           potencia = 'No disponible';
+          energiaEsteMes = 'No disponible';
+          energiaTotal = 'No disponible';
         }
         isLoading = false;
         hayConexion = false;
@@ -246,6 +270,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         _buildDetailRow('Energía Generada Hoy', energia, Icons.bolt, Colors.orange),
                         const Divider(height: 24),
                         _buildDetailRow('Potencia Instantánea', potencia, Icons.flash_on, Colors.blue),
+                        const Divider(height: 24),
+                        _buildDetailRow('Energía Este Mes', energiaEsteMes, Icons.calendar_today, Colors.green),
+                        const Divider(height: 24),
+                        _buildDetailRow('Energía Total', energiaTotal, Icons.public, Colors.teal),
                       ],
                     ),
                   ),
