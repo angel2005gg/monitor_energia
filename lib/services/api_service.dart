@@ -70,36 +70,36 @@ class ApiService {
     // Hora fin de generación solar (6 PM)
     final int horaFin = 18;
     
-    print('Generando datos para el horario solar desde ${horaInicio}h hasta máximo ${horaFin}h');
+    print('Generando datos solo para el horario solar desde ${horaInicio}h hasta ${horaFin}h');
     
-    // Generar datos para todas las horas del día (para mantener la escala completa)
-    for (int i = 0; i < 24; i++) {
-      // Solo incluir datos hasta la hora actual
-      if (i <= horaActual) {
-        // La energía solo se genera entre las 6 AM y 6 PM
-        double energiaGenerada = 0.0;
-        
-        if (i >= horaInicio && i <= horaFin) {
-          // Simular una curva de generación solar: 
-          // - Comienza baja en la mañana
-          // - Aumenta hacia el mediodía
-          // - Disminuye hacia la tarde
-          double horaRelativa = (i - horaInicio).toDouble(); // Corregido: usar .toDouble() en lugar de as double
-          double factorHora = 1.0 - Math.pow((horaRelativa - 6) / 6, 2); // Factor máximo al mediodía
-          
-          // Valores de energía simulados que son mayores en horas centrales del día
-          energiaGenerada = 3.0 * factorHora + (i % 2 == 0 ? 0.3 : -0.2);
-        }
-        
-        datos.add({
-          'hora': i,
-          'energia': energiaGenerada,
-          'timestamp': DateTime(ahora.year, ahora.month, ahora.day, i).millisecondsSinceEpoch
-        });
-      }
+    // Generar datos SOLO para las horas desde las 6 AM hasta la hora actual
+    for (int i = horaInicio; i <= Math.min(horaFin, horaActual); i++) {
+      // La energía solo se genera en este rango horario (ya estamos dentro del rango)
+      double energiaGenerada = 0.0;
+      
+      // Simular una curva de generación solar: 
+      // - Comienza baja en la mañana
+      // - Aumenta hacia el mediodía
+      // - Disminuye hacia la tarde
+      double horaRelativa = (i - horaInicio).toDouble();
+      double factorHora = 1.0 - Math.pow((horaRelativa - 6) / 6, 2); // Factor máximo al mediodía
+      
+      // Valores de energía simulados que son mayores en horas centrales del día
+      energiaGenerada = 3.0 * factorHora + (i % 2 == 0 ? 0.3 : -0.2);
+      if (energiaGenerada < 0) energiaGenerada = 0.05; // Valor mínimo para visualización
+      
+      datos.add({
+        'hora': i,
+        'energia': energiaGenerada,
+        'timestamp': DateTime(ahora.year, ahora.month, ahora.day, i).millisecondsSinceEpoch
+      });
     }
     
-    print('Generados ${datos.length} registros de datos');
+    print('Generados ${datos.length} registros de datos solares desde las ${horaInicio}h');
+    if (datos.isNotEmpty) {
+      print('Rango de datos: ${datos.first['hora']}h - ${datos.last['hora']}h');
+    }
+    
     return datos;
   }
 }
