@@ -48,8 +48,11 @@ class _HomeScreenState extends State<HomeScreen> {
       // Verificar que el widget siga montado antes de actualizar el estado
       if (!mounted) return;
       
-      // Capturar la hora actual explícitamente
-      final ahora = DateTime.now();
+      // Cambiar esto:
+      // final ahora = DateTime.now().toLocal();
+      
+      // Por esto (zona horaria explícita para Colombia):
+      final ahora = DateTime.now().subtract(const Duration(hours: 5));
       
       // Guardamos los últimos valores válidos
       ultimaEnergia = '${datos['energiaGeneradaHoy']} kWh';

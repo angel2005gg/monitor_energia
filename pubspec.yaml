@@ -31,6 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^0.13.6
+  fl_chart: ^0.70.0 # En lugar de charts_flutter
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -39,6 +40,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1 # Añade esta línea
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -94,3 +96,11 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"  # Usa el archivo logo.png
+  adaptive_icon_background: "#FFFFFF"  # Color de fondo para Android
+  adaptive_icon_foreground: "assets/images/logo.png"  # Misma imagen para Android
+  remove_alpha_ios: true  # Ayuda con la transparencia en iOS
