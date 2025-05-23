@@ -34,8 +34,8 @@ class MedidorAnalogico extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: Colors.white,
                   border: Border.all(
-                    color: Colors.grey.shade200,
-                    width: 2,
+                    color: const Color.fromARGB(255, 0, 0, 0), // CAMBIADO: de shade200 a shade300 para que sea más visible
+                    width: 1.5, // CAMBIADO: de 2 a 1.5 para que sea más delgado
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -44,6 +44,19 @@ class MedidorAnalogico extends StatelessWidget {
                       spreadRadius: 1.0,
                     )
                   ],
+                ),
+              ),
+              
+              // AÑADIR: Segundo borde interior más sutil
+              Container(
+                width: 255,
+                height: 255,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 148, 148, 148),
+                    width: 0.8, // Línea muy delgada
+                  ),
                 ),
               ),
               

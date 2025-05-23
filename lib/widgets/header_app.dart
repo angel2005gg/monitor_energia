@@ -8,9 +8,9 @@ class HeaderApp extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       elevation: 4,
       centerTitle: true,
-      backgroundColor: const Color(0xFF1E88E5),
+      backgroundColor: const Color(0xFF0A2E73), // Azul corporativo más sobrio
       title: Image.asset(
-        'assets/images/kamati_logo.png', // Quitar la barra inicial '/'
+        'assets/images/kamati_logo.png',
         height: 40,
         fit: BoxFit.contain,
       ),

@@ -158,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   gradient: hayConexion 
                     ? const LinearGradient(
-                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                      colors: [Color(0xFF0A2E73), Color(0xFF083A5C)], // CAMBIADO: usando el color especificado
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     )
@@ -170,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: hayConexion ? Colors.blue.withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+                      color: hayConexion ? Color(0xFF0A2E73).withOpacity(0.3) : Colors.grey.withOpacity(0.3), // CAMBIADO: sombra con el nuevo color
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     )
