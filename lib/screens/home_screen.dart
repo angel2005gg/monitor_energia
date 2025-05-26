@@ -20,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Nuevas variables para los campos adicionales
   String energiaEsteMes = '';
   String energiaTotal = '';
+  String energiaEsteAnio = '';
   
   bool isLoading = true;
   DateTime? ultimaActualizacion;
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? ultimaPotencia;
   String? ultimaEnergiaEsteMes;
   String? ultimaEnergiaTotal;
+  String? ultimaEnergiaEsteAnio;
   
   bool hayConexion = true;
 
@@ -71,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ultimaPotencia = '${datos['potenciaInstantanea']} kW';
       ultimaEnergiaEsteMes = datos['energiaEsteMes'] ?? 'No disponible';
       ultimaEnergiaTotal = datos['energiaTotal'] ?? 'No disponible';
+      ultimaEnergiaEsteAnio = datos['energiaEsteAño'] ?? 'No disponible';
       
       print('Energia este mes: ${datos['energiaEsteMes']}');
       print('Energia total: ${datos['energiaTotal']}');
@@ -80,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
         potencia = ultimaPotencia!;
         energiaEsteMes = ultimaEnergiaEsteMes!;
         energiaTotal = ultimaEnergiaTotal!;
+        energiaEsteAnio = ultimaEnergiaEsteAnio!;
         ultimaActualizacion = ahora;
         isLoading = false;
         hayConexion = true;
@@ -104,11 +108,13 @@ class _HomeScreenState extends State<HomeScreen> {
           potencia = ultimaPotencia!;
           if (ultimaEnergiaEsteMes != null) energiaEsteMes = ultimaEnergiaEsteMes!;
           if (ultimaEnergiaTotal != null) energiaTotal = ultimaEnergiaTotal!;
+          if (ultimaEnergiaEsteAnio != null) energiaEsteAnio = ultimaEnergiaEsteAnio!;
         } else {
           energia = 'No disponible';
           potencia = 'No disponible';
           energiaEsteMes = 'No disponible';
           energiaTotal = 'No disponible';
+          energiaEsteAnio = 'No disponible';
         }
         isLoading = false;
         hayConexion = false;
@@ -203,6 +209,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         _buildDetailRow('Potencia Instantánea', potencia, Icons.flash_on, Colors.blue),
                         const Divider(height: 24),
                         _buildDetailRow('Energía Este Mes', energiaEsteMes, Icons.calendar_today, Colors.green),
+                        const Divider(height: 24),
+                        _buildDetailRow('Energía Este Año', energiaEsteAnio, Icons.event, Colors.purple),
                         const Divider(height: 24),
                         _buildDetailRow('Energía Total', energiaTotal, Icons.public, Colors.teal),
                       ],
