@@ -383,35 +383,58 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Panel Adicional',
+              'Resumen Energético',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 40),
-            
-            // Por ahora, contenido de placeholder
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.dashboard,
-                    color: Colors.white.withOpacity(0.7),
-                    size: 80,
+            const SizedBox(height: 30),
+            // Primera fila: Energía Hoy y Energía Este Mes
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDataItem(
+                    'Energía Hoy',
+                    energia,
+                    Icons.bolt,
+                    Colors.orange,
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Contenido adicional\npronto disponible',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 16,
-                    ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _buildDataItem(
+                    'Energía Este Mes',
+                    energiaEsteMes,
+                    Icons.calendar_today,
+                    Colors.green,
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            // Segunda fila: Energía Este Año y Energía Total
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDataItem(
+                    'Energía Este Año',
+                    energiaEsteAnio,
+                    Icons.event,
+                    Colors.purple,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _buildDataItem(
+                    'Energía Total',
+                    energiaTotal,
+                    Icons.public,
+                    Colors.teal,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -517,6 +540,33 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDataItem(String title, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 40),
+        const SizedBox(height: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
