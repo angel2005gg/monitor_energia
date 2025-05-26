@@ -378,65 +378,103 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Resumen Energético',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+        padding: const EdgeInsets.all(12),
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Título y estado de conexión
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Resumen Energético',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: hayConexion 
+                        ? Colors.green.withOpacity(0.8)
+                        : Colors.orange.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        hayConexion 
+                          ? Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          : const Icon(Icons.wifi_off, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          hayConexion ? 'Online' : 'Sin conexión',
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 30),
-            // Primera fila: Energía Hoy y Energía Este Mes
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDataItem(
-                    'Energía Hoy',
-                    energia,
-                    Icons.bolt,
-                    Colors.orange,
+              const SizedBox(height: 16),
+              // Primera fila: Energía Hoy y Energía Este Mes
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDataItem(
+                      'Energía Hoy',
+                      energia,
+                      Icons.bolt,
+                      Colors.orange,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _buildDataItem(
-                    'Energía Este Mes',
-                    energiaEsteMes,
-                    Icons.calendar_today,
-                    Colors.green,
+                  const SizedBox(width: 10), // Reducido de 20 a 10
+                  Expanded(
+                    child: _buildDataItem(
+                      'Energía Este Mes',
+                      energiaEsteMes,
+                      Icons.calendar_today,
+                      Colors.green,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-            // Segunda fila: Energía Este Año y Energía Total
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDataItem(
-                    'Energía Este Año',
-                    energiaEsteAnio,
-                    Icons.event,
-                    Colors.purple,
+                ],
+              ),
+              const SizedBox(height: 16), // Reducido de 30 a 16
+              // Segunda fila: Energía Este Año y Energía Total
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDataItem(
+                      'Energía Este Año',
+                      energiaEsteAnio,
+                      Icons.event,
+                      Colors.purple,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _buildDataItem(
-                    'Energía Total',
-                    energiaTotal,
-                    Icons.public,
-                    Colors.teal,
+                  const SizedBox(width: 10), // Reducido de 20 a 10
+                  Expanded(
+                    child: _buildDataItem(
+                      'Energía Total',
+                      energiaTotal,
+                      Icons.public,
+                      Colors.teal,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -548,13 +586,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildDataItem(String title, String value, IconData icon, Color color) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 40),
-        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.13),
+            shape: BoxShape.circle,
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Icon(icon, color: color, size: 32),
+        ),
+        const SizedBox(height: 6), // Reducido de 10 a 6
         Text(
           title,
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 14,
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.2,
           ),
           textAlign: TextAlign.center,
         ),
@@ -564,9 +611,19 @@ class _HomeScreenState extends State<HomeScreen> {
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
           ),
           textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4), // Reducido de 6 a 4
+        Container(
+          height: 2,
+          width: 32,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.18),
+            borderRadius: BorderRadius.circular(2),
+          ),
         ),
       ],
     );
