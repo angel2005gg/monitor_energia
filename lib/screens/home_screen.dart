@@ -5,6 +5,8 @@ import '../widgets/dato_card.dart';
 import '../widgets/header_app.dart';
 import '../widgets/graficas_panel.dart';
 import '../widgets/medidor_analogico.dart';
+import '../widgets/graficas_mes.dart';
+import '../widgets/graficas_anio.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -34,9 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
   
   bool hayConexion = true;
 
-  // AÑADIR: PageController para el carrusel
+  // PageController para el carrusel
   PageController _pageController = PageController();
   int _currentPage = 0;
+
+  // NUEVO: Variable para controlar qué gráfica mostrar
+  String _tipoGraficaSeleccionada = 'Día'; // Opciones: 'Día', 'Mes', 'Año'
 
   @override
   void initState() {
@@ -44,7 +49,6 @@ class _HomeScreenState extends State<HomeScreen> {
     cargarDatos();
   }
 
-  // AÑADIR: Dispose del PageController
   @override
   void dispose() {
     _pageController.dispose();
@@ -75,9 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ultimaEnergiaTotal = datos['energiaTotal'] ?? 'No disponible';
       ultimaEnergiaEsteAnio = datos['energiaEsteAño'] ?? 'No disponible';
       
-      print('Energia este mes: ${datos['energiaEsteMes']}');
-      print('Energia total: ${datos['energiaTotal']}');
-      
       setState(() {
         energia = ultimaEnergia!;
         potencia = ultimaPotencia!;
@@ -87,8 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ultimaActualizacion = ahora;
         isLoading = false;
         hayConexion = true;
-        
-        print('Hora actualizada: ${_formatFecha(ahora)}');
       });
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -136,9 +135,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final theme = Theme.of(context);
-    
     return Scaffold(
       appBar: const HeaderApp(),
       backgroundColor: const Color(0xFFF4F6F8),
@@ -152,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // CARRUSEL DEL PANEL PRINCIPAL
               SizedBox(
-                height: 350, // Altura fija para el carrusel
+                height: 350,
                 child: PageView(
                   controller: _pageController,
                   onPageChanged: (int page) {
@@ -181,45 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               
-              // Tarjetas de datos detallados (MANTENER TODO IGUAL)
-              const SizedBox(height: 24),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Información Detallada',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _buildDetailRow('Energía Generada Hoy', energia, Icons.bolt, Colors.orange),
-                        const Divider(height: 24),
-                        _buildDetailRow('Potencia Instantánea', potencia, Icons.flash_on, Colors.blue),
-                        const Divider(height: 24),
-                        _buildDetailRow('Energía Este Mes', energiaEsteMes, Icons.calendar_today, Colors.green),
-                        const Divider(height: 24),
-                        _buildDetailRow('Energía Este Año', energiaEsteAnio, Icons.event, Colors.purple),
-                        const Divider(height: 24),
-                        _buildDetailRow('Energía Total', energiaTotal, Icons.public, Colors.teal),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Panel para gráficas (MANTENER TODO IGUAL)
+              // SECCIÓN DE GRÁFICAS
               const SizedBox(height: 24),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -241,10 +199,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: GraficasPanel(),
+              const SizedBox(height: 16),
+              
+              // BOTONES DE SELECCIÓN DE GRÁFICA
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildGraficaButton('Día'),
+                    const SizedBox(width: 12),
+                    _buildGraficaButton('Mes'),
+                    const SizedBox(width: 12),
+                    _buildGraficaButton('Año'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // CONTENEDOR DE GRÁFICAS
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildGraficaActual(),
               ),
               const SizedBox(height: 16),
             ],
@@ -253,8 +229,65 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-  
-  // NUEVO: Panel principal (página 1 del carrusel)
+
+  // NUEVO: Botón para seleccionar tipo de gráfica
+  Widget _buildGraficaButton(String tipo) {
+    final bool isSelected = _tipoGraficaSeleccionada == tipo;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _tipoGraficaSeleccionada = tipo;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected 
+            ? const Color(0xFF0A2E73) // Color del header/carrusel cuando está seleccionado
+            : Colors.white, // Fondo blanco cuando no está seleccionado
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            color: const Color(0xFF0A2E73),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
+          tipo,
+          style: TextStyle(
+            color: isSelected 
+              ? Colors.white // Letras blancas cuando está seleccionado
+              : Colors.black, // Letras negras cuando no está seleccionado
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // NUEVO: Mostrar la gráfica actual según la selección
+  Widget _buildGraficaActual() {
+    switch (_tipoGraficaSeleccionada) {
+      case 'Día':
+        return const GraficasPanel();
+      case 'Mes':
+        return const GraficasMes(); // Usar el nuevo widget
+      case 'Año':
+        return const GraficasAnio(); // Usar el nuevo widget
+      default:
+        return const GraficasPanel();
+    }
+  }
+
+  // Panel principal (página 1 del carrusel)
   Widget _buildPanelPrincipal() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -352,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // NUEVO: Panel secundario (página 2 del carrusel) - por ahora igual
+  // Panel secundario (página 2 del carrusel)
   Widget _buildPanelSecundario() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -439,7 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Colors.orange,
                     ),
                   ),
-                  const SizedBox(width: 10), // Reducido de 20 a 10
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _buildDataItem(
                       'Energía Este Mes',
@@ -450,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16), // Reducido de 30 a 16
+              const SizedBox(height: 16),
               // Segunda fila: Energía Este Año y Energía Total
               Row(
                 children: [
@@ -462,7 +495,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Colors.purple,
                     ),
                   ),
-                  const SizedBox(width: 10), // Reducido de 20 a 10
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _buildDataItem(
                       'Energía Total',
@@ -503,86 +536,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   
-  // MANTENER TODOS LOS MÉTODOS EXISTENTES IGUAL
-  Widget _buildInfoCircle(String title, String value, Color color) {
-    return Column(
-      children: [
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withOpacity(0.15),
-            border: Border.all(color: color, width: 2),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  value.split(' ')[0],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  value.contains(' ') ? value.split(' ')[1] : '',
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String title, String value, IconData icon, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildDataItem(String title, String value, IconData icon, Color color) {
     return Column(
       children: [
@@ -594,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(12),
           child: Icon(icon, color: color, size: 32),
         ),
-        const SizedBox(height: 6), // Reducido de 10 a 6
+        const SizedBox(height: 6),
         Text(
           title,
           style: const TextStyle(
@@ -616,7 +569,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 4), // Reducido de 6 a 4
+        const SizedBox(height: 4),
         Container(
           height: 2,
           width: 32,

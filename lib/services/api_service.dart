@@ -102,4 +102,92 @@ class ApiService {
     
     return datos;
   }
+
+  static Future<List<Map<String, dynamic>>> obtenerDatosPorMes() async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final url = Uri.parse('http://192.168.0.11:1880/datos/mes?t=$timestamp');
+    
+    final headers = {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    };
+    
+    try {
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        print('Datos mensuales actualizados: ${response.body}');
+        List<dynamic> data = json.decode(response.body);
+        return data.map((item) => item as Map<String, dynamic>).toList();
+      } else {
+        throw Exception('Error al obtener datos mensuales: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error al obtener datos mensuales: $e');
+      return _generarDatosMesEjemplo();
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> obtenerDatosPorAnio() async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final url = Uri.parse('http://192.168.0.11:1880/datos/anio?t=$timestamp');
+    
+    final headers = {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    };
+    
+    try {
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        print('Datos anuales actualizados: ${response.body}');
+        List<dynamic> data = json.decode(response.body);
+        return data.map((item) => item as Map<String, dynamic>).toList();
+      } else {
+        throw Exception('Error al obtener datos anuales: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error al obtener datos anuales: $e');
+      return _generarDatosAnioEjemplo();
+    }
+  }
+
+  static List<Map<String, dynamic>> _generarDatosMesEjemplo() {
+    final List<Map<String, dynamic>> datos = [];
+    final DateTime ahora = horaActualColombia();
+    final int diaActual = ahora.day;
+    
+    for (int i = 1; i <= diaActual; i++) {
+      double energiaGenerada = 15.0 + (i % 7) * 5.0 + (Math.Random().nextDouble() * 10);
+      
+      datos.add({
+        'dia': i,
+        'energia': energiaGenerada,
+        'timestamp': DateTime(ahora.year, ahora.month, i).millisecondsSinceEpoch
+      });
+    }
+    
+    return datos;
+  }
+
+  static List<Map<String, dynamic>> _generarDatosAnioEjemplo() {
+    final List<Map<String, dynamic>> datos = [];
+    final DateTime ahora = horaActualColombia();
+    final int mesActual = ahora.month;
+    
+    for (int i = 1; i <= mesActual; i++) {
+      double energiaGenerada = 200.0 + (i * 25.0) + (Math.Random().nextDouble() * 100);
+      
+      datos.add({
+        'mes': i,
+        'energia': energiaGenerada,
+        'timestamp': DateTime(ahora.year, i, 1).millisecondsSinceEpoch
+      });
+    }
+    
+    return datos;
+  }
 }
