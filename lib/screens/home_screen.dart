@@ -7,6 +7,8 @@ import '../widgets/graficas_panel.dart';
 import '../widgets/medidor_analogico.dart';
 import '../widgets/graficas_mes.dart';
 import '../widgets/graficas_anio.dart';
+import '../utils/utilidades.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -71,8 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
       
       if (!mounted) return;
       
-      final ahora = DateTime.now().subtract(const Duration(hours: 5));
-      
+      // CAMBIAR ESTA LÍNEA:
+      // final ahora = DateTime.now().subtract(const Duration(hours: 5));
+      // POR ESTA:
+      final ahora = horaActualColombia(); // Usar la función de utilidades
+    
       ultimaEnergia = '${datos['energiaGeneradaHoy']} kWh';
       ultimaPotencia = '${datos['potenciaInstantanea']} kW';
       ultimaEnergiaEsteMes = datos['energiaEsteMes'] ?? 'No disponible';
@@ -136,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const HeaderApp(),
+      // QUITAR ESTA LÍNEA: appBar: const HeaderApp(),
       backgroundColor: const Color(0xFFF4F6F8),
       body: RefreshIndicator(
         onRefresh: cargarDatos,
@@ -582,9 +587,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // REEMPLAZAR el método _formatFecha por este:
   String _formatFecha(DateTime fecha) {
-    final bool isAM = fecha.hour < 12;
-    final int hour12 = fecha.hour > 12 ? fecha.hour - 12 : (fecha.hour == 0 ? 12 : fecha.hour);
-    return '${hour12}:${fecha.minute.toString().padLeft(2, '0')}:${fecha.second.toString().padLeft(2, '0')} ${isAM ? 'AM' : 'PM'}';
+    // Usar el formateador de utilidades que ya funciona correctamente
+    return formatearHoraColombia(fecha);
   }
 }
