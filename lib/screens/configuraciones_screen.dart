@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fl_chart/fl_chart.dart';  // AGREGAR ESTE IMPORT
+import 'package:fl_chart/fl_chart.dart';
 import 'package:monitor_energia/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ConfiguracionesScreen extends StatefulWidget {
   const ConfiguracionesScreen({Key? key}) : super(key: key);
@@ -11,19 +12,16 @@ class ConfiguracionesScreen extends StatefulWidget {
 }
 
 class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
-  // ELIMINAR este controlador:
-  // final TextEditingController _produccionMensualController = TextEditingController();
-  
-  // Controladores para los campos de entrada (SOLO 2 AHORA)
+  // Controladores para los campos de entrada
   final TextEditingController _costoProyectoController = TextEditingController();
   final TextEditingController _precioKwhController = TextEditingController();
 
   // Variables para almacenar los valores
   double _costoProyecto = 0.0;
   double _precioKwh = 0.0;
-  double _produccionMensual = 0.0; // Este se obtendrá de la API
+  double _produccionMensual = 0.0;
 
-  // NUEVA VARIABLE para mostrar los datos de la API
+  // Variables para mostrar los datos de la API
   String _energiaEsteMesAPI = '';
   bool _datosAPICargados = false;
 
@@ -33,13 +31,17 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
   int _mesesParaPago = 0;
   bool _proyectoPagado = false;
 
+  // NUEVA VARIABLE: Indicar si hay datos guardados
+  bool _hayDatosGuardados = false;
+
   @override
   void initState() {
     super.initState();
-    _cargarDatosAPI(); // Cargar datos de la API al inicializar
+    _cargarDatosAPI();
+    _cargarDatosGuardados();
   }
 
-  // NUEVO MÉTODO: Cargar datos de la API
+  // MÉTODO: Cargar datos de la API
   Future<void> _cargarDatosAPI() async {
     try {
       final datos = await ApiService.obtenerDatos();
@@ -66,6 +68,251 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     }
   }
 
+  // MÉTODO: Cargar datos guardados
+  Future<void> _cargarDatosGuardados() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Cargar datos de los campos
+      final costoGuardado = prefs.getDouble('costo_proyecto') ?? 0.0;
+      final precioGuardado = prefs.getDouble('precio_kwh') ?? 0.0;
+      
+      // Cargar resultados calculados
+      final ahorroMensualGuardado = prefs.getDouble('ahorro_mensual') ?? 0.0;
+      final mesesParaPagoGuardado = prefs.getInt('meses_para_pago') ?? 0;
+      final proyectoPagadoGuardado = prefs.getBool('proyecto_pagado') ?? false;
+      
+      // Cargar lista de ahorro acumulado
+      final ahorroAcumuladoString = prefs.getStringList('ahorro_acumulado') ?? [];
+      final ahorroAcumuladoGuardado = ahorroAcumuladoString
+          .map((e) => double.tryParse(e) ?? 0.0)
+          .toList();
+
+      // Si hay datos guardados, aplicarlos
+      if (costoGuardado > 0 && precioGuardado > 0) {
+        setState(() {
+          _costoProyecto = costoGuardado;
+          _precioKwh = precioGuardado;
+          _ahorroMensual = ahorroMensualGuardado;
+          _mesesParaPago = mesesParaPagoGuardado;
+          _proyectoPagado = proyectoPagadoGuardado;
+          _ahorroAcumulado = ahorroAcumuladoGuardado;
+          _hayDatosGuardados = true;
+          
+          // Llenar los campos de texto
+          _costoProyectoController.text = costoGuardado.toStringAsFixed(0);
+          _precioKwhController.text = precioGuardado.toStringAsFixed(0);
+        });
+
+        print('Datos de rentabilidad cargados desde almacenamiento local');
+        
+        // Mostrar mensaje informativo
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Datos de rentabilidad cargados automáticamente'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error cargando datos guardados: $e');
+    }
+  }
+
+  // MÉTODO: Guardar datos
+  Future<void> _guardarDatos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Guardar datos de los campos
+      await prefs.setDouble('costo_proyecto', _costoProyecto);
+      await prefs.setDouble('precio_kwh', _precioKwh);
+      
+      // Guardar resultados calculados
+      await prefs.setDouble('ahorro_mensual', _ahorroMensual);
+      await prefs.setInt('meses_para_pago', _mesesParaPago);
+      await prefs.setBool('proyecto_pagado', _proyectoPagado);
+      
+      // Guardar lista de ahorro acumulado como strings
+      final ahorroAcumuladoString = _ahorroAcumulado
+          .map((e) => e.toString())
+          .toList();
+      await prefs.setStringList('ahorro_acumulado', ahorroAcumuladoString);
+      
+      // Guardar timestamp de cuando se guardaron los datos
+      await prefs.setString('fecha_guardado', DateTime.now().toIso8601String());
+      
+      print('Datos de rentabilidad guardados exitosamente');
+    } catch (e) {
+      print('Error guardando datos: $e');
+    }
+  }
+
+  // MÉTODO: Limpiar datos guardados
+  Future<void> _limpiarDatosGuardados() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Eliminar todas las claves relacionadas con rentabilidad
+      await prefs.remove('costo_proyecto');
+      await prefs.remove('precio_kwh');
+      await prefs.remove('ahorro_mensual');
+      await prefs.remove('meses_para_pago');
+      await prefs.remove('proyecto_pagado');
+      await prefs.remove('ahorro_acumulado');
+      await prefs.remove('fecha_guardado');
+      
+      // Limpiar la interfaz
+      setState(() {
+        _costoProyecto = 0.0;
+        _precioKwh = 0.0;
+        _ahorroMensual = 0.0;
+        _mesesParaPago = 0;
+        _proyectoPagado = false;
+        _ahorroAcumulado.clear();
+        _hayDatosGuardados = false;
+        
+        // Limpiar los campos de texto
+        _costoProyectoController.clear();
+        _precioKwhController.clear();
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🗑️ Datos de rentabilidad eliminados'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      print('Datos de rentabilidad eliminados');
+    } catch (e) {
+      print('Error eliminando datos: $e');
+    }
+  }
+
+  // MÉTODO: Calcular en hilo separado
+  Future<Map<String, dynamic>> _calcularEnHiloSeparado() async {
+    return await Future(() async {
+      // CÁLCULOS (movidos aquí para no bloquear la UI)
+      double ahorroMensual = _produccionMensual * _precioKwh;
+      
+      // Calcular ahorro acumulado mes a mes hasta que se pague el proyecto
+      List<double> ahorroAcumulado = [];
+      double acumulado = 0.0;
+      int mes = 0;
+      
+      // LIMITAR EL CÁLCULO para evitar loops infinitos
+      int maxMeses = 1200; // Máximo 100 años (más que suficiente)
+      
+      while (acumulado < _costoProyecto && mes < maxMeses) {
+        mes++;
+        acumulado += ahorroMensual;
+        ahorroAcumulado.add(acumulado);
+        
+        // Agregar un pequeño delay cada 100 iteraciones para no bloquear
+        if (mes % 100 == 0) {
+          // Pequeña pausa para permitir que otros procesos corran
+          await Future.delayed(const Duration(microseconds: 1));
+        }
+      }
+      
+      bool proyectoPagado = acumulado >= _costoProyecto;
+      
+      return {
+        'ahorroMensual': ahorroMensual,
+        'ahorroAcumulado': ahorroAcumulado,
+        'mesesParaPago': mes,
+        'proyectoPagado': proyectoPagado,
+      };
+    });
+  }
+
+  // MÉTODO: Calcular rentabilidad
+  Future<void> _calcularRentabilidad() async {
+    // Obtener valores de los campos
+    _costoProyecto = double.tryParse(_costoProyectoController.text) ?? 0.0;
+    _precioKwh = double.tryParse(_precioKwhController.text) ?? 0.0;
+
+    if (_costoProyecto <= 0 || _precioKwh <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor completa los campos de costo y precio por kWh'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (_produccionMensual <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pueden obtener datos de producción del sistema. Intenta más tarde.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Mostrar indicador de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+
+    try {
+      // Realizar cálculos
+      final resultados = await _calcularEnHiloSeparado();
+      
+      // Cerrar indicador de carga
+      if (mounted) Navigator.of(context).pop();
+      
+      if (mounted) {
+        setState(() {
+          _ahorroMensual = resultados['ahorroMensual'];
+          _ahorroAcumulado = resultados['ahorroAcumulado'];
+          _mesesParaPago = resultados['mesesParaPago'];
+          _proyectoPagado = resultados['proyectoPagado'];
+          _hayDatosGuardados = true;
+        });
+
+        // GUARDAR DATOS AUTOMÁTICAMENTE DESPUÉS DEL CÁLCULO
+        await _guardarDatos();
+
+        // Mostrar mensaje de éxito
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _proyectoPagado 
+                ? '🎉 ¡Proyecto se paga en $_mesesParaPago meses! Datos guardados automáticamente.'
+                : '💾 Cálculo completado y guardado. Datos disponibles para próximas sesiones.'
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar indicador de carga en caso de error
+      if (mounted) Navigator.of(context).pop();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al calcular la rentabilidad. Intenta de nuevo.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -76,18 +323,51 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            // CAMBIAR ESTE TEXTO:
-            const Text(
-              'Rentabilidad Solar',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0A2E73),
-              ),
+            // TÍTULO CON INDICADOR DE DATOS GUARDADOS
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Rentabilidad Solar',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0A2E73),
+                    ),
+                  ),
+                ),
+                // MOSTRAR INDICADOR SI HAY DATOS GUARDADOS
+                if (_hayDatosGuardados)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.save, size: 16, color: Colors.green),
+                        SizedBox(width: 4),
+                        Text(
+                          'Guardado',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             Text(
-              'Calcula cuándo tu sistema solar se paga solo',
+              _hayDatosGuardados 
+                ? 'Datos cargados automáticamente. Puedes modificarlos si deseas.'
+                : 'Calcula cuándo tu sistema solar se paga solo',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -106,7 +386,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             
             const SizedBox(height: 20),
             
-            // ESPACIO PARA FUTURA GRÁFICA
+            // ESPACIO PARA GRÁFICA
             if (_ahorroAcumulado.isNotEmpty)
               _buildEspacioGrafica(),
           ],
@@ -115,27 +395,127 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     );
   }
 
-  // AGREGAR ESTE MÉTODO que falta:
-  Widget _buildChip(String texto, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        texto,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
+  Widget _buildTarjetaConfiguracion() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0A2E73).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.solar_power,
+                    color: Color(0xFF0A2E73),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Cálculo de Rentabilidad Solar',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _hayDatosGuardados 
+                          ? 'Datos guardados automáticamente'
+                          : 'Solo completa 2 campos, el resto lo tomamos de tu sistema',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // BOTÓN PARA LIMPIAR DATOS
+                if (_hayDatosGuardados)
+                  IconButton(
+                    onPressed: _limpiarDatosGuardados,
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: 'Limpiar datos guardados',
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // CAMPO: Costo del proyecto
+            _buildCampoEntrada(
+              'Costo del Proyecto Solar',
+              'Ingresa el costo total en COP',
+              _costoProyectoController,
+              Icons.attach_money,
+              Colors.green,
+              'COP',
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // CAMPO: Precio por kWh
+            _buildCampoEntrada(
+              'Precio por kWh',
+              'Precio que cobra tu comercializador',
+              _precioKwhController,
+              Icons.flash_on,
+              Colors.orange,
+              'COP/kWh',
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // NUEVO: MOSTRAR DATO DE LA API (NO EDITABLE)
+            _buildCampoAPI(
+              'Producción Mensual (Datos del Sistema)',
+              _datosAPICargados ? _energiaEsteMesAPI : 'Cargando...',
+              Icons.wb_sunny,
+              Colors.blue,
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // BOTÓN CALCULAR
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: _datosAPICargados ? _calcularRentabilidad : null,
+                icon: const Icon(Icons.calculate, color: Colors.white),
+                label: Text(
+                  _datosAPICargados 
+                    ? (_hayDatosGuardados ? 'Recalcular' : 'Calcular Rentabilidad')
+                    : 'Cargando datos...',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _datosAPICargados 
+                    ? const Color(0xFF0A2E73) 
+                    : Colors.grey,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // AGREGAR ESTE MÉTODO que falta:
   Widget _buildCampoEntrada(
     String titulo,
     String hint,
@@ -182,122 +562,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     );
   }
 
-  Widget _buildTarjetaConfiguracion() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0A2E73).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.solar_power,
-                    color: Color(0xFF0A2E73),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Cálculo de Rentabilidad Solar',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Solo completa 2 campos, el resto lo tomamos de tu sistema',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
-            // CAMPO: Costo del proyecto
-            _buildCampoEntrada(
-              'Costo del Proyecto Solar',
-              'Ingresa el costo total en COP',
-              _costoProyectoController,
-              Icons.attach_money,
-              Colors.green,
-              'COP',
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // CAMPO: Precio por kWh
-            _buildCampoEntrada(
-              'Precio por kWh',
-              'Precio que cobra tu comercializador',
-              _precioKwhController,
-              Icons.flash_on,
-              Colors.orange,
-              'COP/kWh',
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // NUEVO: MOSTRAR DATO DE LA API (NO EDITABLE)
-            _buildCampoAPI(
-              'Producción Mensual (Datos del Sistema)',
-              _datosAPICargados ? _energiaEsteMesAPI : 'Cargando...',
-              Icons.wb_sunny,
-              Colors.blue,
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // BOTÓN CALCULAR (con validación mejorada)
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: _datosAPICargados ? _calcularRentabilidad : null,
-                icon: const Icon(Icons.calculate, color: Colors.white),
-                label: Text(
-                  _datosAPICargados ? 'Calcular Rentabilidad' : 'Cargando datos...',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _datosAPICargados 
-                    ? const Color(0xFF0A2E73) 
-                    : Colors.grey,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCampoAPI(
-    String titulo,
-    String valor,
-    IconData icono,
-    Color color,
-  ) {
+  Widget _buildCampoAPI(String titulo, String valor, IconData icono, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -471,7 +736,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.show_chart,
+                    Icons.analytics,
                     color: Colors.purple,
                     size: 24,
                   ),
@@ -537,7 +802,6 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     );
   }
 
-  // NUEVO: Construir la gráfica de rentabilidad
   Widget _construirGraficaRentabilidad() {
     if (_ahorroAcumulado.isEmpty) {
       return const Center(
@@ -546,18 +810,17 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     }
 
     // CALCULAR MEJOR LA ESCALA MÁXIMA
-    double maxY = _costoProyecto * 1.3; // 30% más que el costo del proyecto
+    double maxY = _costoProyecto * 1.3;
     double maxAhorro = _ahorroAcumulado.isNotEmpty ? _ahorroAcumulado.last : 0;
     
-    // Si el ahorro final es mayor que el costo + 30%, usar el ahorro como referencia
     if (maxAhorro > maxY) {
-      maxY = maxAhorro * 1.2; // 20% más que el ahorro máximo
+      maxY = maxAhorro * 1.2;
     }
 
     // CALCULAR MEJOR LA ESCALA HORIZONTAL
-    int maxX = _mesesParaPago + 3; // Solo 3 meses extra, no 6
+    int maxX = _mesesParaPago + 3;
     if (_mesesParaPago <= 3) {
-      maxX = 6; // Mínimo 6 meses para que se vea bien
+      maxX = 6;
     }
 
     return LineChart(
@@ -566,8 +829,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           show: true,
           drawHorizontalLine: true,
           drawVerticalLine: false,
-          // MEJOR INTERVALO PARA LÍNEAS HORIZONTALES
-          horizontalInterval: maxY / 6, // 6 líneas horizontales
+          horizontalInterval: maxY / 6,
           getDrawingHorizontalLine: (value) {
             return FlLine(
               color: Colors.grey.withOpacity(0.3),
@@ -585,7 +847,6 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
-              // MEJOR INTERVALO PARA EL EJE X
               interval: _calcularIntervaloX(maxX),
               getTitlesWidget: (double value, TitleMeta meta) {
                 return Text(
@@ -598,8 +859,8 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 70, // Más espacio para números grandes
-              interval: maxY / 5, // 5 intervalos en Y
+              reservedSize: 70,
+              interval: maxY / 5,
               getTitlesWidget: (double value, TitleMeta meta) {
                 return Text(
                   '\$${_formatearNumeroCorto(value)}',
@@ -616,9 +877,9 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           border: Border.all(color: Colors.grey.shade400, width: 1),
         ),
         minX: 0,
-        maxX: maxX.toDouble(), // Usar la escala calculada
+        maxX: maxX.toDouble(),
         minY: 0,
-        maxY: maxY, // Usar la escala calculada
+        maxY: maxY,
         lineBarsData: [
           // LÍNEA 1: Ahorro acumulado (verde ascendente)
           LineChartBarData(
@@ -629,9 +890,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             color: Colors.green,
             barWidth: 3,
             isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: false,
-            ),
+            dotData: FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
               color: Colors.green.withOpacity(0.1),
@@ -642,7 +901,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           LineChartBarData(
             spots: [
               FlSpot(0, _costoProyecto),
-              FlSpot(maxX.toDouble(), _costoProyecto), // Usar maxX
+              FlSpot(maxX.toDouble(), _costoProyecto),
             ],
             isCurved: false,
             color: Colors.red,
@@ -655,8 +914,10 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
         lineTouchData: LineTouchData(
           enabled: true,
           touchTooltipData: LineTouchTooltipData(
-            tooltipPadding: const EdgeInsets.all(8),
-            tooltipMargin: 8,
+            getTooltipColor: (touchedSpot) => const Color(0xFF1F2937),
+            tooltipRoundedRadius: 12,
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            tooltipMargin: 16,
             getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
               return touchedBarSpots.map((barSpot) {
                 if (barSpot.barIndex == 0) {
@@ -694,7 +955,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
               dashArray: [8, 4],
               label: VerticalLineLabel(
                 show: true,
-                alignment: Alignment.topCenter, // Cambiar a center
+                alignment: Alignment.topCenter,
                 padding: const EdgeInsets.only(top: 8),
                 style: const TextStyle(
                   color: Colors.orange,
@@ -710,87 +971,33 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     );
   }
 
-  // NUEVO MÉTODO: Calcular intervalo para el eje X
   double _calcularIntervaloX(int maxX) {
-    if (maxX <= 6) return 1; // Mostrar cada mes
-    if (maxX <= 12) return 2; // Mostrar cada 2 meses
-    if (maxX <= 24) return 3; // Mostrar cada 3 meses
-    if (maxX <= 60) return 6; // Mostrar cada 6 meses
-    return 12; // Mostrar cada año
+    if (maxX <= 6) return 1;
+    if (maxX <= 12) return 2;
+    if (maxX <= 24) return 3;
+    if (maxX <= 60) return 6;
+    return 12;
   }
 
-  void _calcularRentabilidad() {
-    // Obtener valores de los campos (SOLO 2 CAMPOS AHORA)
-    _costoProyecto = double.tryParse(_costoProyectoController.text) ?? 0.0;
-    _precioKwh = double.tryParse(_precioKwhController.text) ?? 0.0;
-    // _produccionMensual ya se obtuvo de la API
-
-    if (_costoProyecto <= 0 || _precioKwh <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor completa los campos de costo y precio por kWh'),
-          backgroundColor: Colors.orange,
+  Widget _buildChip(String texto, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        texto,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
-      );
-      return;
-    }
-
-    if (_produccionMensual <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se pueden obtener datos de producción del sistema. Intenta más tarde.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // CÁLCULOS (igual que antes)
-    _ahorroMensual = _produccionMensual * _precioKwh;
-    
-    // Calcular ahorro acumulado mes a mes hasta que se pague el proyecto
-    _ahorroAcumulado.clear();
-    double acumulado = 0.0;
-    int mes = 0;
-    
-    while (acumulado < _costoProyecto && mes < 600) { // Máximo 50 años
-      mes++;
-      acumulado += _ahorroMensual;
-      _ahorroAcumulado.add(acumulado);
-    }
-    
-    _mesesParaPago = mes;
-    _proyectoPagado = acumulado >= _costoProyecto;
-
-    setState(() {});
-
-    // Mostrar mensaje de éxito
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _proyectoPagado 
-            ? '¡Proyecto se paga en $_mesesParaPago meses! (${(_mesesParaPago / 12).toStringAsFixed(1)} años)'
-            : 'Cálculo completado usando ${_produccionMensual.toStringAsFixed(1)} kWh/mes del sistema'
-        ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 4),
       ),
     );
   }
 
-  String _formatearNumero(double numero) {
-    if (numero >= 1000000) {
-      return '${(numero / 1000000).toStringAsFixed(1)}M';
-    } else if (numero >= 1000) {
-      return '${(numero / 1000).toStringAsFixed(0)}K';
-    } else {
-      return numero.toStringAsFixed(0);
-    }
-  }
-
-  // AGREGAR ESTOS MÉTODOS que faltan:
-
-  // NUEVO: Leyenda de la gráfica
   Widget _buildLeyendaItem(String texto, Color color) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -815,14 +1022,23 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     );
   }
 
-  // NUEVO: Formatear números para los ejes de la gráfica
+  String _formatearNumero(double numero) {
+    if (numero >= 1000000) {
+      return '${(numero / 1000000).toStringAsFixed(1)}M';
+    } else if (numero >= 1000) {
+      return '${(numero / 1000).toStringAsFixed(0)}K';
+    } else {
+      return numero.toStringAsFixed(0);
+    }
+  }
+
   String _formatearNumeroCorto(double numero) {
     if (numero >= 1000000000) {
-      return '${(numero / 1000000000).toStringAsFixed(1)}B'; // Billones
+      return '${(numero / 1000000000).toStringAsFixed(1)}B';
     } else if (numero >= 1000000) {
-      return '${(numero / 1000000).toStringAsFixed(1)}M'; // Millones
+      return '${(numero / 1000000).toStringAsFixed(1)}M';
     } else if (numero >= 1000) {
-      return '${(numero / 1000).toStringAsFixed(0)}K'; // Miles
+      return '${(numero / 1000).toStringAsFixed(0)}K';
     } else {
       return numero.toStringAsFixed(0);
     }
