@@ -545,13 +545,29 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
       );
     }
 
+    // CALCULAR MEJOR LA ESCALA MÁXIMA
+    double maxY = _costoProyecto * 1.3; // 30% más que el costo del proyecto
+    double maxAhorro = _ahorroAcumulado.isNotEmpty ? _ahorroAcumulado.last : 0;
+    
+    // Si el ahorro final es mayor que el costo + 30%, usar el ahorro como referencia
+    if (maxAhorro > maxY) {
+      maxY = maxAhorro * 1.2; // 20% más que el ahorro máximo
+    }
+
+    // CALCULAR MEJOR LA ESCALA HORIZONTAL
+    int maxX = _mesesParaPago + 3; // Solo 3 meses extra, no 6
+    if (_mesesParaPago <= 3) {
+      maxX = 6; // Mínimo 6 meses para que se vea bien
+    }
+
     return LineChart(
       LineChartData(
         gridData: FlGridData(
           show: true,
           drawHorizontalLine: true,
           drawVerticalLine: false,
-          horizontalInterval: _costoProyecto / 5, // 5 líneas horizontales
+          // MEJOR INTERVALO PARA LÍNEAS HORIZONTALES
+          horizontalInterval: maxY / 6, // 6 líneas horizontales
           getDrawingHorizontalLine: (value) {
             return FlLine(
               color: Colors.grey.withOpacity(0.3),
@@ -569,7 +585,8 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
-              interval: _mesesParaPago > 24 ? 12 : 6, // Mostrar cada 6 o 12 meses
+              // MEJOR INTERVALO PARA EL EJE X
+              interval: _calcularIntervaloX(maxX),
               getTitlesWidget: (double value, TitleMeta meta) {
                 return Text(
                   '${value.toInt()}',
@@ -579,18 +596,10 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             ),
           ),
           leftTitles: AxisTitles(
-            // CAMBIAR ESTA PARTE:
-            axisNameWidget: const Padding(
-              padding: EdgeInsets.only(right: 8), // Cambiar de bottom a right
-              child: Text(
-                'Dinero (COP)', // Texto más corto
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12), // Tamaño más pequeño
-              ),
-            ),
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 60,
-              interval: _costoProyecto / 4, // 4 intervalos en Y
+              reservedSize: 70, // Más espacio para números grandes
+              interval: maxY / 5, // 5 intervalos en Y
               getTitlesWidget: (double value, TitleMeta meta) {
                 return Text(
                   '\$${_formatearNumeroCorto(value)}',
@@ -607,9 +616,9 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           border: Border.all(color: Colors.grey.shade400, width: 1),
         ),
         minX: 0,
-        maxX: _mesesParaPago.toDouble() + 6, // Un poco más para ver mejor
+        maxX: maxX.toDouble(), // Usar la escala calculada
         minY: 0,
-        maxY: _costoProyecto * 1.2, // 20% más para que se vea bien
+        maxY: maxY, // Usar la escala calculada
         lineBarsData: [
           // LÍNEA 1: Ahorro acumulado (verde ascendente)
           LineChartBarData(
@@ -621,7 +630,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             barWidth: 3,
             isStrokeCapRound: true,
             dotData: FlDotData(
-              show: false, // No mostrar puntos en la línea
+              show: false,
             ),
             belowBarData: BarAreaData(
               show: true,
@@ -633,14 +642,14 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           LineChartBarData(
             spots: [
               FlSpot(0, _costoProyecto),
-              FlSpot(_mesesParaPago.toDouble() + 6, _costoProyecto),
+              FlSpot(maxX.toDouble(), _costoProyecto), // Usar maxX
             ],
             isCurved: false,
             color: Colors.red,
             barWidth: 2,
             isStrokeCapRound: true,
             dotData: FlDotData(show: false),
-            dashArray: [5, 5], // Línea punteada
+            dashArray: [5, 5],
           ),
         ],
         lineTouchData: LineTouchData(
@@ -650,7 +659,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             tooltipMargin: 8,
             getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
               return touchedBarSpots.map((barSpot) {
-                if (barSpot.barIndex == 0) { // Línea de ahorro
+                if (barSpot.barIndex == 0) {
                   final mes = barSpot.x.toInt();
                   final ahorro = barSpot.y;
                   return LineTooltipItem(
@@ -661,7 +670,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
                       fontSize: 12,
                     ),
                   );
-                } else { // Línea de costo
+                } else {
                   return LineTooltipItem(
                     'Costo del Proyecto\n\$${_formatearNumero(_costoProyecto)}',
                     const TextStyle(
@@ -676,7 +685,6 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           ),
           handleBuiltInTouches: true,
         ),
-        // MARCADOR ESPECIAL: Punto de equilibrio
         extraLinesData: ExtraLinesData(
           verticalLines: [
             VerticalLine(
@@ -686,14 +694,14 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
               dashArray: [8, 4],
               label: VerticalLineLabel(
                 show: true,
-                alignment: Alignment.topRight,
-                padding: const EdgeInsets.only(right: 8),
+                alignment: Alignment.topCenter, // Cambiar a center
+                padding: const EdgeInsets.only(top: 8),
                 style: const TextStyle(
                   color: Colors.orange,
                   fontWeight: FontWeight.bold,
                   fontSize: 11,
                 ),
-                labelResolver: (line) => '¡Aquí se paga!',
+                labelResolver: (line) => '¡Se paga!',
               ),
             ),
           ],
@@ -702,40 +710,13 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     );
   }
 
-  // NUEVO: Leyenda de la gráfica
-  Widget _buildLeyendaItem(String texto, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 3,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          texto,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // NUEVO: Formatear números para los ejes
-  String _formatearNumeroCorto(double numero) {
-    if (numero >= 1000000) {
-      return '${(numero / 1000000).toStringAsFixed(0)}M';
-    } else if (numero >= 1000) {
-      return '${(numero / 1000).toStringAsFixed(0)}K';
-    } else {
-      return numero.toStringAsFixed(0);
-    }
+  // NUEVO MÉTODO: Calcular intervalo para el eje X
+  double _calcularIntervaloX(int maxX) {
+    if (maxX <= 6) return 1; // Mostrar cada mes
+    if (maxX <= 12) return 2; // Mostrar cada 2 meses
+    if (maxX <= 24) return 3; // Mostrar cada 3 meses
+    if (maxX <= 60) return 6; // Mostrar cada 6 meses
+    return 12; // Mostrar cada año
   }
 
   void _calcularRentabilidad() {
@@ -802,6 +783,46 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
       return '${(numero / 1000000).toStringAsFixed(1)}M';
     } else if (numero >= 1000) {
       return '${(numero / 1000).toStringAsFixed(0)}K';
+    } else {
+      return numero.toStringAsFixed(0);
+    }
+  }
+
+  // AGREGAR ESTOS MÉTODOS que faltan:
+
+  // NUEVO: Leyenda de la gráfica
+  Widget _buildLeyendaItem(String texto, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 3,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          texto,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // NUEVO: Formatear números para los ejes de la gráfica
+  String _formatearNumeroCorto(double numero) {
+    if (numero >= 1000000000) {
+      return '${(numero / 1000000000).toStringAsFixed(1)}B'; // Billones
+    } else if (numero >= 1000000) {
+      return '${(numero / 1000000).toStringAsFixed(1)}M'; // Millones
+    } else if (numero >= 1000) {
+      return '${(numero / 1000).toStringAsFixed(0)}K'; // Miles
     } else {
       return numero.toStringAsFixed(0);
     }
