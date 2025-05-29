@@ -76,8 +76,9 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
+            // CAMBIAR ESTE TEXTO:
             const Text(
-              'Configuraciones',
+              'Rentabilidad Solar',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -86,7 +87,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Calcula la rentabilidad de tu sistema solar',
+              'Calcula cuándo tu sistema solar se paga solo',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -578,14 +579,12 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             ),
           ),
           leftTitles: AxisTitles(
+            // CAMBIAR ESTA PARTE:
             axisNameWidget: const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: RotatedBox(
-                quarterTurns: 3,
-                child: Text(
-                  'Dinero Acumulado (COP)',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
+              padding: EdgeInsets.only(right: 8), // Cambiar de bottom a right
+              child: Text(
+                'Dinero (COP)', // Texto más corto
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12), // Tamaño más pequeño
               ),
             ),
             sideTitles: SideTitles(

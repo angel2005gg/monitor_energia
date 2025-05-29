@@ -60,9 +60,9 @@ class _MainContainerState extends State<MainContainer> {
               label: 'Inicio',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.settings, size: 24),
-              activeIcon: Icon(Icons.settings, size: 28),
-              label: 'Configuración',
+              icon: Icon(Icons.trending_up, size: 24),
+              activeIcon: Icon(Icons.trending_up, size: 28),
+              label: 'Rentabilidad',
             ),
           ],
         ),
