@@ -742,18 +742,20 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Text(
-                  'Gráfica de Rentabilidad',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                const Expanded(
+                  child: Text(
+                    'Gráfica de Rentabilidad',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             
-            // INFORMACIÓN RESUMIDA
+            // INFORMACIÓN RESUMIDA - MEJORADA PARA PANTALLAS PEQUEÑAS
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -762,14 +764,29 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
+              child: Column(
                 children: [
-                  _buildChip('Inversión: \$${_formatearNumero(_costoProyecto)}', Colors.red),
-                  _buildChip('Punto de equilibrio: Mes $_mesesParaPago', Colors.green),
-                  _buildChip('Ahorro mensual: \$${_formatearNumero(_ahorroMensual)}', Colors.blue),
+                  // PRIMERA FILA
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildChip('Inversión: \$${_formatearNumero(_costoProyecto)}', Colors.red),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildChip('Equilibrio: Mes $_mesesParaPago', Colors.green),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // SEGUNDA FILA - CHIP COMPLETO
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildChip('Ahorro mensual: \$${_formatearNumero(_ahorroMensual)}', Colors.blue),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -785,16 +802,48 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             
             const SizedBox(height: 16),
             
-            // LEYENDA
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildLeyendaItem('Ahorro Acumulado', Colors.green),
-                const SizedBox(width: 20),
-                _buildLeyendaItem('Costo del Proyecto', Colors.red),
-                const SizedBox(width: 20),
-                _buildLeyendaItem('Punto de Equilibrio', Colors.orange),
-              ],
+            // LEYENDA MEJORADA - RESPONSIVE PARA PANTALLAS PEQUEÑAS
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Leyenda',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // PRIMERA FILA DE LEYENDA
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildLeyendaItem('Ahorro Acumulado', Colors.green),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildLeyendaItem('Costo del Proyecto', Colors.red),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // SEGUNDA FILA DE LEYENDA - CENTRADA
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildLeyendaItem('Punto de Equilibrio', Colors.orange),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -981,18 +1030,23 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
 
   Widget _buildChip(String texto, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // REDUCIR padding horizontal
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16), // REDUCIR borderRadius
         border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Text(
-        texto,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
+      child: Center( // CENTRAR el texto
+        child: Text(
+          texto,
+          style: TextStyle(
+            fontSize: 11, // REDUCIR tamaño de fuente
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+          textAlign: TextAlign.center, // CENTRAR texto
+          maxLines: 2, // PERMITIR 2 líneas si es necesario
+          overflow: TextOverflow.ellipsis, // EVITAR overflow
         ),
       ),
     );
@@ -1011,11 +1065,16 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          texto,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+        Flexible( // CAMBIAR Text por Flexible
+          child: Text(
+            texto,
+            style: const TextStyle(
+              fontSize: 11, // REDUCIR tamaño de fuente
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2, // PERMITIR 2 líneas
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
