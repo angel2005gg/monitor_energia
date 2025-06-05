@@ -895,12 +895,65 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             ),
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 30,
-              interval: _calcularIntervaloX(maxX),
+              reservedSize: 50,
+              interval: null, // ← CAMBIAR A NULL para control manual
               getTitlesWidget: (double value, TitleMeta meta) {
-                return Text(
-                  '${value.toInt()}',
-                  style: const TextStyle(fontSize: 12),
+                int mes = value.toInt();
+                
+                // NUEVA LÓGICA MÁS ESTRICTA PARA EVITAR AMONTONAMIENTO
+                // Calculamos qué números específicos mostrar
+                Set<int> numerosAMostrar = {};
+                
+                if (maxX <= 6) {
+                  // Para 6 meses o menos: mostrar todos
+                  numerosAMostrar = {1, 2, 3, 4, 5, 6};
+                } else if (maxX <= 12) {
+                  // Para 12 meses: solo estos números específicos
+                  numerosAMostrar = {2, 4, 6, 8, 10, 12};
+                } else if (maxX <= 18) {
+                  // Para 18 meses: cada 3
+                  numerosAMostrar = {3, 6, 9, 12, 15, 18};
+                } else if (maxX <= 24) {
+                  // Para 24 meses: cada 4
+                  numerosAMostrar = {4, 8, 12, 16, 20, 24};
+                } else if (maxX <= 36) {
+                  // Para 36 meses: cada 6
+                  numerosAMostrar = {6, 12, 18, 24, 30, 36};
+                } else if (maxX <= 48) {
+                  // Para 48 meses: cada 8
+                  numerosAMostrar = {8, 16, 24, 32, 40, 48};
+                } else if (maxX <= 60) {
+                  // Para 60 meses: cada 10
+                  numerosAMostrar = {10, 20, 30, 40, 50, 60};
+                } else if (maxX <= 120) {
+                  // Para 120 meses: cada 20
+                  numerosAMostrar = {20, 40, 60, 80, 100, 120};
+                } else {
+                  // Para más de 120 meses: cada 50
+                  numerosAMostrar = {50, 100, 150, 200, 250, 300};
+                }
+                
+                // Solo mostrar si el número está en nuestro conjunto específico
+                if (!numerosAMostrar.contains(mes)) {
+                  return const SizedBox.shrink();
+                }
+                
+                // Verificar que esté dentro del rango válido
+                if (mes <= 0 || mes > maxX) {
+                  return const SizedBox.shrink();
+                }
+                
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    '$mes',
+                    style: const TextStyle(
+                      fontSize: 10, // ← REDUCIR TAMAÑO
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 );
               },
             ),
@@ -1021,11 +1074,13 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
   }
 
   double _calcularIntervaloX(int maxX) {
-    if (maxX <= 6) return 1;
-    if (maxX <= 12) return 2;
-    if (maxX <= 24) return 3;
-    if (maxX <= 60) return 6;
-    return 12;
+    // Esta función ahora debe retornar el intervalo correcto para el grid
+    if (maxX <= 6) return 1;        // Cada mes
+    if (maxX <= 12) return 2;       // Cada 2 meses  
+    if (maxX <= 24) return 3;       // Cada 3 meses
+    if (maxX <= 48) return 6;       // Cada 6 meses
+    if (maxX <= 120) return 12;     // Cada 12 meses
+    return 24;                      // Cada 24 meses
   }
 
   Widget _buildChip(String texto, Color color) {
