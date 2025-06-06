@@ -646,11 +646,15 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Text(
-                  'Resultados del Análisis',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded( // ← AGREGAR Expanded
+                  child: const Text(
+                    'Resultados del Análisis',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2, // ← PERMITIR 2 LÍNEAS
+                    overflow: TextOverflow.ellipsis, // ← PROTEGER OVERFLOW
                   ),
                 ),
               ],
