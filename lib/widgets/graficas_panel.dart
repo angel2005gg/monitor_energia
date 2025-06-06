@@ -142,17 +142,8 @@ class _GraficasPanelState extends State<GraficasPanel> {
     // Añadir depuración antes de renderizar
     print('Renderizando gráfica con ${_datosEnergia.length} datos');
     
-    // Identificar las horas con generación solar para mejor visualización
-    final horasSolares = _datosEnergia.where((dato) => dato.energia > 0).toList();
-    print('Horas con generación solar: ${horasSolares.length}');
-    if (horasSolares.isNotEmpty) {
-      print('Primera hora con generación: ${_formatearHora(horasSolares.first.hora)}');
-      print('Última hora con generación: ${_formatearHora(horasSolares.last.hora)}');
-    }
-    
     return Column(
       children: [
-        // Eliminar la etiqueta superior y colocarla junto a la gráfica
         Expanded(
           child: Row(
             children: [
@@ -167,27 +158,20 @@ class _GraficasPanelState extends State<GraficasPanel> {
                   ),
                 ),
               ),
-              // Gráfica a la derecha
+              // Gráfica a la derecha - CAMBIO DE BarChart A LineChart
               Expanded(
-                child: BarChart(
-                  BarChartData(
-                    alignment: BarChartAlignment.spaceAround,
-                    maxY: _calcularMaxY(),
-                    barTouchData: BarTouchData(
-                      touchTooltipData: BarTouchTooltipData(
-                        // Eliminar la propiedad de color de fondo para usar el valor predeterminado
-                        tooltipPadding: const EdgeInsets.all(8),
-                        tooltipMargin: 8,
-                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          final dato = _datosEnergia[group.x.toInt()];
-                          return BarTooltipItem(
-                            '${_formatearHora(dato.hora)}\n${dato.energia.toStringAsFixed(2)} kWh',
-                            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          );
-                        },
-                      ),
-                      touchCallback: (event, response) {},
-                      handleBuiltInTouches: true,
+                child: LineChart(
+                  LineChartData(
+                    gridData: FlGridData(
+                      show: true,
+                      drawHorizontalLine: true,
+                      drawVerticalLine: false,
+                      getDrawingHorizontalLine: (value) {
+                        return FlLine(
+                          color: Colors.grey.withOpacity(0.3),
+                          strokeWidth: 1,
+                        );
+                      },
                     ),
                     titlesData: FlTitlesData(
                       show: true,
@@ -195,35 +179,42 @@ class _GraficasPanelState extends State<GraficasPanel> {
                         sideTitles: SideTitles(
                           showTitles: true,
                           reservedSize: 36,
+                          interval: 1, // ← AGREGAR ESTA LÍNEA
                           getTitlesWidget: (double value, TitleMeta meta) {
-                            // Mostrar sólo algunas horas para evitar sobrecarga
                             final index = value.toInt();
                             if (index < 0 || index >= _datosEnergia.length) {
                               return const SizedBox.shrink();
                             }
                             
-                            // Si hay más de 12 datos, mostrar solo horas pares o cada 3 horas
-                            if (_datosEnergia.length > 12) {
-                              if (index % 3 != 0) {
-                                return const SizedBox.shrink();
-                              }
-                            } else if (_datosEnergia.length > 8 && index % 2 != 0) {
+                            // NUEVA LÓGICA SIN DUPLICADOS
+                            bool mostrarHora = false;
+                            
+                            if (_datosEnergia.length <= 6) {
+                              mostrarHora = true; // Mostrar todas las horas
+                            } else if (_datosEnergia.length <= 12) {
+                              mostrarHora = (index % 2 == 0); // Cada 2 horas
+                            } else {
+                              mostrarHora = (index % 3 == 0); // Cada 3 horas
+                            }
+                            
+                            // Siempre mostrar primera y última
+                            if (index == 0 || index == _datosEnergia.length - 1) {
+                              mostrarHora = true;
+                            }
+                            
+                            if (!mostrarHora) {
                               return const SizedBox.shrink();
                             }
                             
-                            // Obtener la hora del dato actual
                             final horaActual = _datosEnergia[index].hora;
                             
                             return Padding(
                               padding: const EdgeInsets.only(top: 10.0),
-                              child: Transform.rotate(
-                                angle: _datosEnergia.length > 8 ? 0.6 : 0, // Rotar etiquetas si hay muchos datos
-                                child: Text(
-                                  _formatearHora(horaActual),
-                                  style: const TextStyle(
-                                    fontSize: 10, 
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              child: Text(
+                                _formatearHora(horaActual),
+                                style: const TextStyle(
+                                  fontSize: 10, 
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             );
@@ -250,11 +241,6 @@ class _GraficasPanelState extends State<GraficasPanel> {
                         sideTitles: SideTitles(showTitles: false),
                       ),
                     ),
-                    gridData: const FlGridData(
-                      show: true,
-                      drawHorizontalLine: true,
-                      drawVerticalLine: false,
-                    ),
                     borderData: FlBorderData(
                       show: true,
                       border: const Border(
@@ -264,7 +250,55 @@ class _GraficasPanelState extends State<GraficasPanel> {
                         top: BorderSide(color: Colors.transparent),
                       ),
                     ),
-                    barGroups: _crearBarras(),
+                    minX: 0,
+                    maxX: (_datosEnergia.length - 1).toDouble(),
+                    minY: 0,
+                    maxY: _calcularMaxY(),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: _crearPuntosLinea(),
+                        isCurved: true, // Línea curva suave
+                        curveSmoothness: 0.3,
+                        color: Colors.blue,
+                        barWidth: 3,
+                        isStrokeCapRound: true,
+                        dotData: FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, barData, index) {
+                            return FlDotCirclePainter(
+                              radius: 4,
+                              color: _colorPorEnergia(_datosEnergia[index].energia),
+                              strokeWidth: 2,
+                              strokeColor: Colors.white,
+                            );
+                          },
+                        ),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          color: Colors.blue.withOpacity(0.1),
+                        ),
+                      ),
+                    ],
+                    lineTouchData: LineTouchData(
+                      handleBuiltInTouches: true,
+                      touchTooltipData: LineTouchTooltipData(
+                        tooltipPadding: const EdgeInsets.all(8),
+                        tooltipMargin: 8,
+                        getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                          return touchedBarSpots.map((barSpot) {
+                            final index = barSpot.x.toInt();
+                            if (index >= 0 && index < _datosEnergia.length) {
+                              final dato = _datosEnergia[index];
+                              return LineTooltipItem(
+                                '${_formatearHora(dato.hora)}\n${dato.energia.toStringAsFixed(2)} kWh',
+                                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              );
+                            }
+                            return null;
+                          }).toList();
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -283,32 +317,11 @@ class _GraficasPanelState extends State<GraficasPanel> {
     );
   }
 
-  List<BarChartGroupData> _crearBarras() {
-    // Ajustar el ancho de las barras según la cantidad de datos
-    double barWidth = _datosEnergia.length > 12 ? 12 : 16;
-    
+  List<FlSpot> _crearPuntosLinea() {
     return _datosEnergia.asMap().entries.map((entry) {
       final index = entry.key;
       final dato = entry.value;
-      return BarChartGroupData(
-        x: index,
-        barRods: [
-          BarChartRodData(
-            toY: dato.energia,
-            color: _colorPorEnergia(dato.energia),
-            width: barWidth,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(6),
-              topRight: Radius.circular(6),
-            ),
-            backDrawRodData: BackgroundBarChartRodData(
-              show: true,
-              toY: _calcularMaxY(),
-              color: Colors.grey.withOpacity(0.1),
-            ),
-          ),
-        ],
-      );
+      return FlSpot(index.toDouble(), dato.energia);
     }).toList();
   }
 
@@ -333,16 +346,13 @@ class _GraficasPanelState extends State<GraficasPanel> {
     return Colors.orange;
   }
 
-  // Método mejorado para formatear la hora
+  // Método simplificado para formatear la hora
   String _formatearHora(int hora) {
-    // Usar la hora de Colombia como base para asegurar consistencia
-    final ahora = horaActualColombia();
-    
-    // Crear un DateTime con la hora específica pero del mismo día
-    final DateTime fechaHora = DateTime(ahora.year, ahora.month, ahora.day, hora);
-    
-    // Usar el formato estándar de la aplicación para consistencia
-    return formatearHoraColombia(fechaHora).split(':')[0] + formatearHoraColombia(fechaHora).substring(formatearHoraColombia(fechaHora).length - 3);
+    // Formateo simple y directo
+    if (hora == 0) return '12 AM';
+    if (hora < 12) return '${hora} AM';
+    if (hora == 12) return '12 PM';
+    return '${hora - 12} PM';
   }
 
   String _formatearFecha(DateTime fecha) {
