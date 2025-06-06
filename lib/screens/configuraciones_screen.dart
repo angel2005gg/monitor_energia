@@ -22,7 +22,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
   double _produccionMensual = 0.0;
 
   // Variables para mostrar los datos de la API
-  String _energiaEsteMesAPI = '';
+  String _energiaMesPasadoAPI = ''; // ← CAMBIAR de _energiaEsteMesAPI a _energiaMesPasadoAPI
   bool _datosAPICargados = false;
 
   // Variables calculadas
@@ -48,21 +48,21 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
       
       if (mounted) {
         setState(() {
-          _energiaEsteMesAPI = datos['energiaEsteMes'] ?? '0 kWh';
+          _energiaMesPasadoAPI = datos['energiaMesPasado'] ?? '0 kWh'; // ← CAMBIAR aquí
           
-          // Extraer solo el número de la cadena "897 kWh" -> 897.0
-          String numeroStr = _energiaEsteMesAPI.split(' ')[0];
+          // Extraer solo el número de la cadena "1324 kWh" -> 1324.0
+          String numeroStr = _energiaMesPasadoAPI.split(' ')[0];
           _produccionMensual = double.tryParse(numeroStr) ?? 0.0;
           
           _datosAPICargados = true;
         });
         
-        print('Datos de API cargados - Energía este mes: $_energiaEsteMesAPI ($_produccionMensual kWh)');
+        print('Datos de API cargados - Energía mes pasado: $_energiaMesPasadoAPI ($_produccionMensual kWh)'); // ← CAMBIAR mensaje
       }
     } catch (e) {
       print('Error cargando datos de la API: $e');
       setState(() {
-        _energiaEsteMesAPI = 'No disponible';
+        _energiaMesPasadoAPI = 'No disponible'; // ← CAMBIAR aquí también
         _datosAPICargados = true;
       });
     }
@@ -480,8 +480,8 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
             
             // NUEVO: MOSTRAR DATO DE LA API (NO EDITABLE)
             _buildCampoAPI(
-              'Producción Mensual (Datos del Sistema)',
-              _datosAPICargados ? _energiaEsteMesAPI : 'Cargando...',
+              'Producción Mes Pasado (Datos del Sistema)', // ← CAMBIAR texto
+              _datosAPICargados ? _energiaMesPasadoAPI : 'Cargando...', // ← CAMBIAR variable
               Icons.wb_sunny,
               Colors.blue,
             ),
