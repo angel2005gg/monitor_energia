@@ -232,7 +232,7 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
   // MÉTODO: Calcular rentabilidad
   Future<void> _calcularRentabilidad() async {
     // Obtener valores de los campos
-    _costoProyecto = double.tryParse(_costoProyectoController.text) ?? 0.0;
+    _costoProyecto = double.tryParse(_costoProyectoController.text.replaceAll('.', '')) ?? 0.0; // ← CAMBIAR ESTA LÍNEA
     _precioKwh = double.tryParse(_precioKwhController.text) ?? 0.0;
 
     if (_costoProyecto <= 0 || _precioKwh <= 0) {
@@ -540,7 +540,11 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
           controller: controller,
           keyboardType: TextInputType.number,
           inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+            // SOLO AGREGAR ESTO SI ES EL CAMPO DE COSTO DEL PROYECTO
+            if (titulo.contains('Costo del Proyecto'))
+              _NumberFormatter()
+            else
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
           ],
           decoration: InputDecoration(
             hintText: hint,
@@ -1156,5 +1160,35 @@ class _ConfiguracionesScreenState extends State<ConfiguracionesScreen> {
     } else {
       return numero.toStringAsFixed(0);
     }
+  }
+}
+
+// CLASE PARA FORMATEAR NÚMEROS CON PUNTOS
+class _NumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Solo permitir dígitos
+    String newText = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    
+    if (newText.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+    
+    // Formatear con puntos cada 3 dígitos
+    String formatted = '';
+    for (int i = 0; i < newText.length; i++) {
+      if (i > 0 && (newText.length - i) % 3 == 0) {
+        formatted += '.';
+      }
+      formatted += newText[i];
+    }
+    
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 }
