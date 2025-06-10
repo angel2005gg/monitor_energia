@@ -28,31 +28,24 @@ class ApiService {
   }
   
   static Future<List<Map<String, dynamic>>> obtenerDatosPorHora() async {
-    // Añadir parámetro de timestamp para evitar caché
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final url = Uri.parse('http://192.168.0.11:1880/datos/horas?t=$timestamp');
     
-    // Establecer headers para evitar caché
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
     };
     
-    try {
-      final response = await http.get(url, headers: headers);
+    final response = await http.get(url, headers: headers);
 
-      if (response.statusCode == 200) {
-        print('Datos de horas actualizados: ${response.body}'); // Log para depuración
-        List<dynamic> data = json.decode(response.body);
-        return data.map((item) => item as Map<String, dynamic>).toList();
-      } else {
-        throw Exception('Error al obtener datos por hora: ${response.statusCode}');
-      }
-    } catch (e) {
-      // Si no hay datos reales, devolver datos de ejemplo para desarrollo
-      print('Error al obtener datos por hora: $e');
-      return _generarDatosEjemplo();
+    if (response.statusCode == 200) {
+      print('Datos de horas actualizados: ${response.body}');
+      List<dynamic> data = json.decode(response.body);
+      return data.map((item) => item as Map<String, dynamic>).toList();
+    } else {
+      // ← CAMBIAR: NO devolver datos de ejemplo, lanzar excepción
+      throw Exception('Error al obtener datos por hora: ${response.statusCode}');
     }
   }
   
@@ -113,19 +106,15 @@ class ApiService {
       'Expires': '0',
     };
     
-    try {
-      final response = await http.get(url, headers: headers);
+    final response = await http.get(url, headers: headers);
 
-      if (response.statusCode == 200) {
-        print('Datos mensuales actualizados: ${response.body}');
-        List<dynamic> data = json.decode(response.body);
-        return data.map((item) => item as Map<String, dynamic>).toList();
-      } else {
-        throw Exception('Error al obtener datos mensuales: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error al obtener datos mensuales: $e');
-      return _generarDatosMesEjemplo();
+    if (response.statusCode == 200) {
+      print('Datos mensuales actualizados: ${response.body}');
+      List<dynamic> data = json.decode(response.body);
+      return data.map((item) => item as Map<String, dynamic>).toList();
+    } else {
+      // ← CAMBIAR: NO devolver datos de ejemplo, lanzar excepción
+      throw Exception('Error al obtener datos mensuales: ${response.statusCode}');
     }
   }
 
@@ -139,19 +128,15 @@ class ApiService {
       'Expires': '0',
     };
     
-    try {
-      final response = await http.get(url, headers: headers);
+    final response = await http.get(url, headers: headers);
 
-      if (response.statusCode == 200) {
-        print('Datos anuales actualizados: ${response.body}');
-        List<dynamic> data = json.decode(response.body);
-        return data.map((item) => item as Map<String, dynamic>).toList();
-      } else {
-        throw Exception('Error al obtener datos anuales: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error al obtener datos anuales: $e');
-      return _generarDatosAnioEjemplo();
+    if (response.statusCode == 200) {
+      print('Datos anuales actualizados: ${response.body}');
+      List<dynamic> data = json.decode(response.body);
+      return data.map((item) => item as Map<String, dynamic>).toList();
+    } else {
+      // ← CAMBIAR: NO devolver datos de ejemplo, lanzar excepción
+      throw Exception('Error al obtener datos anuales: ${response.statusCode}');
     }
   }
 

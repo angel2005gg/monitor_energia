@@ -51,6 +51,7 @@ class _GraficasPanelState extends State<GraficasPanel> {
             .toList();
             
           _cargando = false;
+          _hayError = false; // ← IMPORTANTE: Marcar como sin error si carga bien
         });
         
         // Log de depuración
@@ -60,10 +61,12 @@ class _GraficasPanelState extends State<GraficasPanel> {
         }
       }
     } catch (e) {
-      setState(() {
-        _cargando = false;
-        _hayError = true;
-      });
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+          _hayError = true; // ← IMPORTANTE: Marcar error cuando no hay conexión
+        });
+      }
       print('Error cargando datos para la gráfica: $e');
     }
   }
@@ -113,16 +116,28 @@ class _GraficasPanelState extends State<GraficasPanel> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.error_outline, size: 48, color: Colors.orange),
+        Icon(
+          Icons.wifi_off,
+          size: 48,
+          color: Colors.grey.shade400,
+        ),
         const SizedBox(height: 16),
-        const Text(
-          'No se pudieron cargar los datos',
-          style: TextStyle(fontSize: 16),
+        Text(
+          'Gráfica no disponible',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade600,
+          ),
         ),
         const SizedBox(height: 8),
-        ElevatedButton(
-          onPressed: _cargarDatos,
-          child: const Text('Reintentar'),
+        Text(
+          'Conecte el sistema para ver los datos',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade500,
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
