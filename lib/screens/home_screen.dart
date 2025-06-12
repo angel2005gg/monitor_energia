@@ -8,6 +8,7 @@ import '../widgets/medidor_analogico.dart';
 import '../widgets/graficas_mes.dart';
 import '../widgets/graficas_anio.dart';
 import '../utils/utilidades.dart';
+import '../widgets/filtro_fechas.dart'; // ← IMPORTAR el nuevo widget
 
 
 class HomeScreen extends StatefulWidget {
@@ -220,9 +221,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              
+              // ← AGREGAR FILTRO AQUÍ (debajo de los botones)
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: FiltroFechas(
+                  tipoGrafica: _tipoGraficaSeleccionada, // ← USAR la variable de estado
+                  onFechaSeleccionada: (nuevaFecha) {
+                    // Manejar el cambio de fecha aquí si es necesario
+                    print('Fecha seleccionada: $nuevaFecha');
+                  },
+                ),
+              ),
+
               const SizedBox(height: 16),
               
-              // CONTENEDOR DE GRÁFICAS
+              // CONTENEDOR DE GRÁFICAS (sin filtro interno)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildGraficaActual(),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/api_service.dart';
 import '../utils/utilidades.dart';
+import '../widgets/filtro_fechas.dart'; // ← AGREGAR IMPORT
 
 class GraficasPanel extends StatefulWidget {
   const GraficasPanel({super.key});
@@ -16,7 +17,8 @@ class _GraficasPanelState extends State<GraficasPanel> {
   List<DatoEnergia> _datosEnergia = [];
   bool _cargando = true;
   bool _hayError = false;
-  Timer? _timer; // ← AGREGAR variable para el timer
+  Timer? _timer;
+  DateTime _fechaSeleccionada = horaActualColombia(); // ← AGREGAR
 
   @override
   void initState() {
@@ -127,12 +129,16 @@ class _GraficasPanelState extends State<GraficasPanel> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Datos del ${_formatearFecha(horaActualColombia())}',
+              'Datos del ${_formatearFecha(_fechaSeleccionada)}',
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
               ),
             ),
+            
+            // ← QUITAR EL FILTRO DE AQUÍ
+            // Ya no incluir FiltroFechas aquí
+            
             const SizedBox(height: 20),
             SizedBox(
               height: 250,
@@ -147,6 +153,46 @@ class _GraficasPanelState extends State<GraficasPanel> {
         ),
       ),
     );
+  }
+
+  // ← NUEVA FUNCIÓN para cargar datos con fecha específica
+  Future<void> _cargarDatosConFecha(DateTime fecha) async {
+    setState(() {
+      _cargando = true;
+    });
+    
+    try {
+      // Formatear fecha para la API
+      final String inicio = '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}T00:00:00';
+      final String fin = '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}T23:59:59';
+      
+      final datos = await ApiService.obtenerDatosPorHoraConFiltro(inicio, fin);
+      
+      if (mounted) {
+        final datosFiltrados = datos
+          .map((dato) => DatoEnergia(
+            hora: dato['hora'],
+            energia: dato['energia'],
+          ))
+          .toList();
+          
+        datosFiltrados.sort((a, b) => a.hora.compareTo(b.hora));
+        
+        setState(() {
+          _datosEnergia = datosFiltrados;
+          _cargando = false;
+          _hayError = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+          _hayError = true;
+        });
+      }
+      print('Error cargando datos con filtro: $e');
+    }
   }
 
   Widget _construirMensajeError() {
