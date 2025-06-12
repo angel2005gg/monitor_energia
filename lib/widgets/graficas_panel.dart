@@ -51,53 +51,60 @@ class _GraficasPanelState extends State<GraficasPanel> {
 
   // Método para cargar datos mejorado
   Future<void> _cargarDatos() async {
+    print('🚀 Iniciando carga de datos para gráfica...');
+    
     try {
       final datos = await ApiService.obtenerDatosPorHora();
-      final horaActual = horaActualColombia().hour;
+      print('📈 Datos recibidos en gráfica: $datos');
+      print('📈 Cantidad de datos: ${datos.length}');
       
       if (mounted) {
+        // CAMBIAR: No filtrar por hora actual, usar todos los datos del día
+        final datosFiltrados = datos
+          .map((dato) => DatoEnergia(
+            hora: dato['hora'],
+            energia: dato['energia'],
+          ))
+          .toList();
+          
+        // NUEVO: Ordenar por hora
+        datosFiltrados.sort((a, b) => a.hora.compareTo(b.hora));
+        
+        print('📊 Datos después del ordenamiento: ${datosFiltrados.length}');
+        print('📊 Datos detallados:');
+        for (var dato in datosFiltrados) {
+          print('   - Hora: ${dato.hora}, Energía: ${dato.energia}');
+        }
+        
         setState(() {
-          // Filtrar datos para asegurarnos de que no hay horas futuras
-          _datosEnergia = datos
-            .where((dato) => dato['hora'] <= horaActual)
-            .map((dato) => DatoEnergia(
-              hora: dato['hora'],
-              energia: dato['energia'],
-            ))
-            .toList();
-            
+          _datosEnergia = datosFiltrados;
           _cargando = false;
-          bool errorAnterior = _hayError; // ← GUARDAR estado anterior
+          bool errorAnterior = _hayError;
           _hayError = false;
           
-          // Si cambió de error a éxito, reiniciar timer
           if (errorAnterior && !_hayError) {
             print('🟢 Conexión restablecida - reiniciando timer normal');
             _iniciarTimer();
           }
         });
         
-        // Log de depuración
-        print('Datos filtrados: ${_datosEnergia.length} registros hasta la hora $horaActual');
-        if (_datosEnergia.isNotEmpty) {
-          print('Rango horario: ${_formatearHora(_datosEnergia.first.hora)} - ${_formatearHora(_datosEnergia.last.hora)}');
-        }
+        print('✅ Estado actualizado - Datos en widget: ${_datosEnergia.length}');
       }
     } catch (e) {
+      print('💥 Error completo en _cargarDatos: $e');
+      
       if (mounted) {
         setState(() {
           _cargando = false;
-          bool errorAnterior = _hayError; // ← GUARDAR estado anterior
+          bool errorAnterior = _hayError;
           _hayError = true;
           
-          // Si cambió de éxito a error, acelerar timer
           if (!errorAnterior && _hayError) {
             print('🔴 Conexión perdida - acelerando verificaciones');
             _iniciarTimer();
           }
         });
       }
-      print('Error cargando datos para la gráfica: $e');
     }
   }
 

@@ -5,9 +5,12 @@ import 'dart:convert';
 import '../utils/utilidades.dart';
 
 class ApiService {
+  // Cambiar la IP del servidor
+  static const String _baseUrl = 'http://10.10.10.5:1880';
+  
   static Future<Map<String, dynamic>> obtenerDatos() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('http://192.168.0.11:1880/datos?t=$timestamp');
+    final url = Uri.parse('$_baseUrl/datos?t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -64,9 +67,10 @@ class ApiService {
     return true;
   }
   
+  // ACTUALIZADO: Usar nueva API de datos por hora
   static Future<List<Map<String, dynamic>>> obtenerDatosPorHora() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('http://192.168.0.11:1880/datos/horas?t=$timestamp');
+    final url = Uri.parse('$_baseUrl/datos/horas?t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -74,68 +78,152 @@ class ApiService {
       'Expires': '0',
     };
     
-    final response = await http.get(url, headers: headers);
+    try {
+      print('🔄 Solicitando datos de: $url');
+      final response = await http.get(url, headers: headers);
+      
+      print('📡 Status Code: ${response.statusCode}');
+      print('📋 Respuesta completa: ${response.body}');
 
-    if (response.statusCode == 200) {
-      print('Datos de horas actualizados: ${response.body}');
-      List<dynamic> data = json.decode(response.body);
-      return data.map((item) => item as Map<String, dynamic>).toList();
-    } else {
-      // ← CAMBIAR: NO devolver datos de ejemplo, lanzar excepción
-      throw Exception('Error al obtener datos por hora: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('📊 Datos decodificados: $data');
+        
+        if (data is Map<String, dynamic> && data.containsKey('energiaHoras')) {
+          print('✅ Estructura correcta encontrada');
+          List<Map<String, dynamic>> datosFormateados = [];
+          
+          if (data['energiaHoras'] != null && data['energiaHoras'] is List) {
+            // NUEVO: Obtener la fecha actual en Colombia
+            final fechaHoyColombia = horaActualColombia();
+            final fechaHoyStr = '${fechaHoyColombia.year}-${fechaHoyColombia.month.toString().padLeft(2, '0')}-${fechaHoyColombia.day.toString().padLeft(2, '0')}';
+            
+            print('📅 Fecha de hoy Colombia: $fechaHoyStr');
+            
+            // NUEVO: Procesar y agrupar datos por hora del día actual
+            Map<int, double> energiaPorHora = {};
+            
+            for (var item in data['energiaHoras']) {
+              try {
+                DateTime timestampUTC = DateTime.parse(item['timestamp']);
+                DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5)); // Convertir a Colombia
+                
+                // Verificar si es del día actual
+                String fechaItem = '${timestampColombia.year}-${timestampColombia.month.toString().padLeft(2, '0')}-${timestampColombia.day.toString().padLeft(2, '0')}';
+                
+                print('🔍 Procesando: $timestampUTC -> $timestampColombia (fecha: $fechaItem)');
+                
+                if (fechaItem == fechaHoyStr) {
+                  int hora = timestampColombia.hour;
+                  double energia = (item['energia'] ?? 0).toDouble();
+                  
+                  // Si ya existe datos para esta hora, sumar la energía
+                  if (energiaPorHora.containsKey(hora)) {
+                    energiaPorHora[hora] = energiaPorHora[hora]! + energia;
+                  } else {
+                    energiaPorHora[hora] = energia;
+                  }
+                  
+                  print('⏰ Hora: $hora, Energía acumulada: ${energiaPorHora[hora]}');
+                } else {
+                  print('❌ Dato no es de hoy: $fechaItem (esperado: $fechaHoyStr)');
+                }
+              } catch (e) {
+                print('❌ Error procesando timestamp ${item['timestamp']}: $e');
+              }
+            }
+            
+            // NUEVO: Convertir el mapa a lista ordenada
+            List<int> horasOrdenadas = energiaPorHora.keys.toList()..sort();
+            
+            for (int hora in horasOrdenadas) {
+              datosFormateados.add({
+                'hora': hora,
+                'energia': energiaPorHora[hora]!,
+                'timestamp': DateTime.now().millisecondsSinceEpoch
+              });
+            }
+            
+            // Si no hay datos del día actual, mostrar los datos más recientes
+            if (datosFormateados.isEmpty) {
+              print('⚠️ No hay datos del día actual, usando datos más recientes...');
+              
+              // Encontrar la fecha más reciente
+              DateTime fechaMasReciente = DateTime(2000);
+              for (var item in data['energiaHoras']) {
+                try {
+                  DateTime timestampUTC = DateTime.parse(item['timestamp']);
+                  DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5));
+                  
+                  if (timestampColombia.isAfter(fechaMasReciente)) {
+                    fechaMasReciente = timestampColombia;
+                  }
+                } catch (e) {
+                  // Ignorar timestamps malformados
+                }
+              }
+              
+              // Obtener todos los datos de la fecha más reciente
+              String fechaMasRecienteStr = '${fechaMasReciente.year}-${fechaMasReciente.month.toString().padLeft(2, '0')}-${fechaMasReciente.day.toString().padLeft(2, '0')}';
+              print('📅 Usando datos de la fecha más reciente: $fechaMasRecienteStr');
+              
+              Map<int, double> energiaPorHoraMasReciente = {};
+              
+              for (var item in data['energiaHoras']) {
+                try {
+                  DateTime timestampUTC = DateTime.parse(item['timestamp']);
+                  DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5));
+                  
+                  String fechaItem = '${timestampColombia.year}-${timestampColombia.month.toString().padLeft(2, '0')}-${timestampColombia.day.toString().padLeft(2, '0')}';
+                  
+                  if (fechaItem == fechaMasRecienteStr) {
+                    int hora = timestampColombia.hour;
+                    double energia = (item['energia'] ?? 0).toDouble();
+                    
+                    if (energiaPorHoraMasReciente.containsKey(hora)) {
+                      energiaPorHoraMasReciente[hora] = energiaPorHoraMasReciente[hora]! + energia;
+                    } else {
+                      energiaPorHoraMasReciente[hora] = energia;
+                    }
+                  }
+                } catch (e) {
+                  // Ignorar errores
+                }
+              }
+              
+              // Convertir a lista
+              List<int> horasOrdenadasMasReciente = energiaPorHoraMasReciente.keys.toList()..sort();
+              
+              for (int hora in horasOrdenadasMasReciente) {
+                datosFormateados.add({
+                  'hora': hora,
+                  'energia': energiaPorHoraMasReciente[hora]!,
+                  'timestamp': DateTime.now().millisecondsSinceEpoch
+                });
+              }
+            }
+            
+            print('📊 Datos formateados finales: $datosFormateados');
+            print('📊 Total de datos procesados: ${datosFormateados.length}');
+            
+            return datosFormateados;
+          }
+        }
+        
+        throw Exception('Estructura de datos no reconocida');
+      } else {
+        throw Exception('Error al obtener datos por hora: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('💥 Excepción completa: $e');
+      throw Exception('Error de conexión en datos por hora: $e');
     }
   }
-  
-  // Función mejorada para generar datos de ejemplo adaptados a horario solar
-  static List<Map<String, dynamic>> _generarDatosEjemplo() {
-    final List<Map<String, dynamic>> datos = [];
-    
-    // Obtener hora actual de Colombia
-    final DateTime ahora = horaActualColombia();
-    final int horaActual = ahora.hour;
-    
-    // Hora de inicio de generación solar (6 AM)
-    final int horaInicio = 6;
-    
-    // Hora fin de generación solar (6 PM)
-    final int horaFin = 18;
-    
-    print('Generando datos solo para el horario solar desde ${horaInicio}h hasta ${horaFin}h');
-    
-    // Generar datos SOLO para las horas desde las 6 AM hasta la hora actual
-    for (int i = horaInicio; i <= Math.min(horaFin, horaActual); i++) {
-      // La energía solo se genera en este rango horario (ya estamos dentro del rango)
-      double energiaGenerada = 0.0;
-      
-      // Simular una curva de generación solar: 
-      // - Comienza baja en la mañana
-      // - Aumenta hacia el mediodía
-      // - Disminuye hacia la tarde
-      double horaRelativa = (i - horaInicio).toDouble();
-      double factorHora = 1.0 - Math.pow((horaRelativa - 6) / 6, 2); // Factor máximo al mediodía
-      
-      // Valores de energía simulados que son mayores en horas centrales del día
-      energiaGenerada = 3.0 * factorHora + (i % 2 == 0 ? 0.3 : -0.2);
-      if (energiaGenerada < 0) energiaGenerada = 0.05; // Valor mínimo para visualización
-      
-      datos.add({
-        'hora': i,
-        'energia': energiaGenerada,
-        'timestamp': DateTime(ahora.year, ahora.month, ahora.day, i).millisecondsSinceEpoch
-      });
-    }
-    
-    print('Generados ${datos.length} registros de datos solares desde las ${horaInicio}h');
-    if (datos.isNotEmpty) {
-      print('Rango de datos: ${datos.first['hora']}h - ${datos.last['hora']}h');
-    }
-    
-    return datos;
-  }
 
+  // ACTUALIZADO: Usar nueva API de datos por mes
   static Future<List<Map<String, dynamic>>> obtenerDatosPorMes() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('http://192.168.0.11:1880/datos/mes?t=$timestamp');
+    final url = Uri.parse('$_baseUrl/datos/mes?t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -147,17 +235,37 @@ class ApiService {
 
     if (response.statusCode == 200) {
       print('Datos mensuales actualizados: ${response.body}');
-      List<dynamic> data = json.decode(response.body);
-      return data.map((item) => item as Map<String, dynamic>).toList();
+      final data = json.decode(response.body);
+      
+      // Procesar los datos de la nueva estructura
+      List<Map<String, dynamic>> datosFormateados = [];
+      
+      if (data['energiaDias'] != null) {
+        for (var item in data['energiaDias']) {
+          // Extraer el día de la fecha
+          DateTime fecha = DateTime.parse(item['fecha']);
+          int dia = fecha.day;
+          double energia = (item['energia'] ?? 0).toDouble();
+          
+          datosFormateados.add({
+            'dia': dia,
+            'energia': energia,
+            'timestamp': fecha.millisecondsSinceEpoch
+          });
+        }
+      }
+      
+      print('Datos mensuales procesados: ${datosFormateados.length} registros');
+      return datosFormateados;
     } else {
-      // ← CAMBIAR: NO devolver datos de ejemplo, lanzar excepción
       throw Exception('Error al obtener datos mensuales: ${response.statusCode}');
     }
   }
 
+  // ACTUALIZADO: Usar nueva API de datos por año
   static Future<List<Map<String, dynamic>>> obtenerDatosPorAnio() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('http://192.168.0.11:1880/datos/anio?t=$timestamp');
+    final url = Uri.parse('$_baseUrl/datos/anio?t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -169,47 +277,30 @@ class ApiService {
 
     if (response.statusCode == 200) {
       print('Datos anuales actualizados: ${response.body}');
-      List<dynamic> data = json.decode(response.body);
-      return data.map((item) => item as Map<String, dynamic>).toList();
+      final data = json.decode(response.body);
+      
+      // Procesar los datos de la nueva estructura
+      List<Map<String, dynamic>> datosFormateados = [];
+      
+      if (data['energiaMeses'] != null) {
+        for (var item in data['energiaMeses']) {
+          // Extraer el mes de la cadena "2025-01"
+          String mesStr = item['mes'];
+          int mes = int.parse(mesStr.split('-')[1]); // Extraer el mes del formato "2025-01"
+          double energia = (item['energia'] ?? 0).toDouble();
+          
+          datosFormateados.add({
+            'mes': mes,
+            'energia': energia,
+            'timestamp': DateTime.parse('$mesStr-01').millisecondsSinceEpoch
+          });
+        }
+      }
+      
+      print('Datos anuales procesados: ${datosFormateados.length} registros');
+      return datosFormateados;
     } else {
-      // ← CAMBIAR: NO devolver datos de ejemplo, lanzar excepción
       throw Exception('Error al obtener datos anuales: ${response.statusCode}');
     }
-  }
-
-  static List<Map<String, dynamic>> _generarDatosMesEjemplo() {
-    final List<Map<String, dynamic>> datos = [];
-    final DateTime ahora = horaActualColombia();
-    final int diaActual = ahora.day;
-    
-    for (int i = 1; i <= diaActual; i++) {
-      double energiaGenerada = 15.0 + (i % 7) * 5.0 + (Math.Random().nextDouble() * 10);
-      
-      datos.add({
-        'dia': i,
-        'energia': energiaGenerada,
-        'timestamp': DateTime(ahora.year, ahora.month, i).millisecondsSinceEpoch
-      });
-    }
-    
-    return datos;
-  }
-
-  static List<Map<String, dynamic>> _generarDatosAnioEjemplo() {
-    final List<Map<String, dynamic>> datos = [];
-    final DateTime ahora = horaActualColombia();
-    final int mesActual = ahora.month;
-    
-    for (int i = 1; i <= mesActual; i++) {
-      double energiaGenerada = 200.0 + (i * 25.0) + (Math.Random().nextDouble() * 100);
-      
-      datos.add({
-        'mes': i,
-        'energia': energiaGenerada,
-        'timestamp': DateTime(ahora.year, i, 1).millisecondsSinceEpoch
-      });
-    }
-    
-    return datos;
   }
 }
