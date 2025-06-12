@@ -6,11 +6,9 @@ import '../utils/utilidades.dart';
 
 class ApiService {
   static Future<Map<String, dynamic>> obtenerDatos() async {
-    // Añadir parámetro de timestamp para evitar caché
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final url = Uri.parse('http://192.168.0.11:1880/datos?t=$timestamp');
     
-    // Establecer headers para evitar caché
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
@@ -20,11 +18,50 @@ class ApiService {
     final response = await http.get(url, headers: headers);
 
     if (response.statusCode == 200) {
-      print('Datos actualizados: ${response.body}'); // Log para depuración
-      return json.decode(response.body);
+      print('Datos actualizados: ${response.body}');
+      
+      final datos = json.decode(response.body);
+      
+      // NUEVA VALIDACIÓN: Verificar si los datos son válidos
+      bool datosValidos = _validarDatos(datos);
+      
+      if (!datosValidos) {
+        print('Datos recibidos pero inválidos (sistema desconectado): ${response.body}');
+        throw Exception('Sistema desconectado - datos no disponibles');
+      }
+      
+      return datos;
     } else {
       throw Exception('Error al obtener datos: ${response.statusCode}');
     }
+  }
+  
+  // NUEVA FUNCIÓN: Validar que los datos sean reales
+  static bool _validarDatos(Map<String, dynamic> datos) {
+    final camposCriticos = [
+      'energiaGeneradaHoy',
+      'potenciaInstantanea',
+      'energiaEsteMes',
+      'energiaTotal',
+      'energiaEsteAño',
+      'energiaMesPasado'
+    ];
+    
+    for (String campo in camposCriticos) {
+      final valor = datos[campo];
+      
+      if (valor == null || 
+          valor.toString().isEmpty || 
+          valor.toString().toLowerCase().contains('no disponible') ||
+          valor.toString().toLowerCase().contains('no available') ||
+          valor.toString().trim() == '') {
+        print('Campo inválido detectado: $campo = $valor');
+        return false;
+      }
+    }
+    
+    print('Todos los datos son válidos');
+    return true;
   }
   
   static Future<List<Map<String, dynamic>>> obtenerDatosPorHora() async {

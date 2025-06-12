@@ -15,19 +15,32 @@ class _GraficasAnioState extends State<GraficasAnio> {
   List<DatoEnergiaAnio> _datosEnergia = [];
   bool _cargando = true;
   bool _hayError = false;
+  Timer? _timer; // ← AGREGAR
 
   @override
   void initState() {
     super.initState();
     print('Inicializando gráfica anual');
     _cargarDatos();
+    _iniciarTimer();
+  }
+
+  void _iniciarTimer() {
+    _timer?.cancel();
+    final duracion = _hayError ? Duration(seconds: 20) : Duration(minutes: 10);
     
-    Timer.periodic(const Duration(minutes: 10), (Timer t) {
+    _timer = Timer.periodic(duracion, (Timer t) {
       if (mounted) {
         _cargarDatos();
         print("Actualizando datos de la gráfica anual: ${horaActualColombia().toString()}");
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> _cargarDatos() async {
@@ -46,7 +59,13 @@ class _GraficasAnioState extends State<GraficasAnio> {
             .toList();
             
           _cargando = false;
-          _hayError = false; // ← SIN ERROR si carga bien
+          bool errorAnterior = _hayError;
+          _hayError = false;
+          
+          if (errorAnterior && !_hayError) {
+            print('🟢 Gráfica anual - conexión restablecida');
+            _iniciarTimer();
+          }
         });
         
         print('Datos anuales filtrados: ${_datosEnergia.length} registros hasta el mes $mesActual');
@@ -55,7 +74,13 @@ class _GraficasAnioState extends State<GraficasAnio> {
       if (mounted) {
         setState(() {
           _cargando = false;
-          _hayError = true; // ← CON ERROR cuando no hay conexión
+          bool errorAnterior = _hayError;
+          _hayError = true;
+          
+          if (!errorAnterior && _hayError) {
+            print('🔴 Gráfica anual - conexión perdida');
+            _iniciarTimer();
+          }
         });
       }
       print('Error cargando datos anuales: $e');

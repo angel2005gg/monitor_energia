@@ -16,6 +16,7 @@ class _GraficasPanelState extends State<GraficasPanel> {
   List<DatoEnergia> _datosEnergia = [];
   bool _cargando = true;
   bool _hayError = false;
+  Timer? _timer; // ← AGREGAR variable para el timer
 
   @override
   void initState() {
@@ -24,13 +25,28 @@ class _GraficasPanelState extends State<GraficasPanel> {
     print('Inicializando gráfica. Hora actual Colombia: ${horaActualColombia().hour}:${horaActualColombia().minute}');
     _cargarDatos();
     
-    // Actualizar los datos cada minuto para mantenerlos sincronizados
-    Timer.periodic(const Duration(minutes: 1), (Timer t) {
+    // CAMBIAR el timer para que sea más frecuente cuando hay error
+    _iniciarTimer();
+  }
+
+  void _iniciarTimer() {
+    _timer?.cancel(); // Cancelar timer anterior si existe
+    
+    // Si hay error, verificar cada 10 segundos, si no cada minuto
+    final duracion = _hayError ? Duration(seconds: 10) : Duration(minutes: 1);
+    
+    _timer = Timer.periodic(duracion, (Timer t) {
       if (mounted) {
         _cargarDatos();
         print("Actualizando datos de la gráfica: ${horaActualColombia().toString()}");
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // ← CANCELAR timer al destruir el widget
+    super.dispose();
   }
 
   // Método para cargar datos mejorado
@@ -51,7 +67,14 @@ class _GraficasPanelState extends State<GraficasPanel> {
             .toList();
             
           _cargando = false;
-          _hayError = false; // ← IMPORTANTE: Marcar como sin error si carga bien
+          bool errorAnterior = _hayError; // ← GUARDAR estado anterior
+          _hayError = false;
+          
+          // Si cambió de error a éxito, reiniciar timer
+          if (errorAnterior && !_hayError) {
+            print('🟢 Conexión restablecida - reiniciando timer normal');
+            _iniciarTimer();
+          }
         });
         
         // Log de depuración
@@ -64,7 +87,14 @@ class _GraficasPanelState extends State<GraficasPanel> {
       if (mounted) {
         setState(() {
           _cargando = false;
-          _hayError = true; // ← IMPORTANTE: Marcar error cuando no hay conexión
+          bool errorAnterior = _hayError; // ← GUARDAR estado anterior
+          _hayError = true;
+          
+          // Si cambió de éxito a error, acelerar timer
+          if (!errorAnterior && _hayError) {
+            print('🔴 Conexión perdida - acelerando verificaciones');
+            _iniciarTimer();
+          }
         });
       }
       print('Error cargando datos para la gráfica: $e');
