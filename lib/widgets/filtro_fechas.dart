@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/utilidades.dart';
+import '../services/api_service.dart';
 
 class FiltroFechas extends StatefulWidget {
   final String tipoGrafica; // 'Día', 'Mes', 'Año'
@@ -17,12 +18,14 @@ class FiltroFechas extends StatefulWidget {
 
 class _FiltroFechasState extends State<FiltroFechas> {
   late DateTime _fechaSeleccionada;
+  bool _inicializado = false; // ← AGREGAR FLAG para evitar bucles
   
   @override
   void initState() {
     super.initState();
     // Inicializar con la fecha actual de Colombia
     _fechaSeleccionada = horaActualColombia();
+    _inicializado = true;
   }
 
   @override
@@ -31,26 +34,31 @@ class _FiltroFechasState extends State<FiltroFechas> {
     // Si cambió el tipo de gráfica, resetear a fecha actual
     if (oldWidget.tipoGrafica != widget.tipoGrafica) {
       _fechaSeleccionada = horaActualColombia();
-      widget.onFechaSeleccionada(_fechaSeleccionada);
+      // ← CAMBIAR: Usar Future.microtask en lugar de addPostFrameCallback
+      Future.microtask(() {
+        if (mounted) {
+          widget.onFechaSeleccionada(_fechaSeleccionada);
+        }
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // ← REDUCIR padding
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Flecha izquierda - MINIMALISTA
           _buildFlechaNavegacion(true),
           
-          const SizedBox(width: 12), // ← REDUCIR espacio
+          const SizedBox(width: 12),
           
           // Dropdowns contextuales - SIN FONDO
           ..._buildDropdownsContextuales(),
           
-          const SizedBox(width: 12), // ← REDUCIR espacio
+          const SizedBox(width: 12),
           
           // Flecha derecha - MINIMALISTA
           _buildFlechaNavegacion(false),
@@ -64,7 +72,7 @@ class _FiltroFechasState extends State<FiltroFechas> {
       onTap: () => _navegarFecha(esIzquierda),
       child: Icon(
         esIzquierda ? Icons.chevron_left : Icons.chevron_right,
-        color: Colors.grey, // ← CAMBIAR color a gris claro
+        color: Colors.grey,
         size: 24,
       ),
     );
@@ -75,9 +83,9 @@ class _FiltroFechasState extends State<FiltroFechas> {
       case 'Día':
         return [
           _buildDropdownDia(),
-          const SizedBox(width: 6), // ← REDUCIR espacio
+          const SizedBox(width: 6),
           _buildDropdownMes(),
-          const SizedBox(width: 6), // ← REDUCIR espacio
+          const SizedBox(width: 6),
           _buildDropdownAnio(),
         ];
       case 'Mes':
@@ -123,33 +131,40 @@ class _FiltroFechasState extends State<FiltroFechas> {
       return const Text('--', style: TextStyle(color: Colors.grey));
     }
     
-    // VALIDAR que el día seleccionado esté en la lista válida
-    bool diaValido = itemsValidos.any((item) => item.value == _fechaSeleccionada.day);
+    // ← CAMBIAR: Validación sin addPostFrameCallback
+    int valorValido = _fechaSeleccionada.day;
+    bool diaValido = itemsValidos.any((item) => item.value == valorValido);
+    
     if (!diaValido && itemsValidos.isNotEmpty) {
-      // Si el día actual no es válido, usar el primer día válido
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _fechaSeleccionada = DateTime(
-            _fechaSeleccionada.year,
-            _fechaSeleccionada.month,
-            itemsValidos.first.value!,
-          );
+      valorValido = itemsValidos.first.value!;
+      // ← CAMBIAR: Actualizar inmediatamente si es necesario
+      if (_inicializado) {
+        Future.microtask(() {
+          if (mounted) {
+            setState(() {
+              _fechaSeleccionada = DateTime(
+                _fechaSeleccionada.year,
+                _fechaSeleccionada.month,
+                valorValido,
+              );
+            });
+            widget.onFechaSeleccionada(_fechaSeleccionada);
+          }
         });
-        widget.onFechaSeleccionada(_fechaSeleccionada);
-      });
+      }
     }
     
     return DropdownButton<int>(
-      value: diaValido ? _fechaSeleccionada.day : itemsValidos.first.value,
+      value: valorValido,
       underline: const SizedBox(),
       style: const TextStyle(
-        color: Colors.grey, // ← CAMBIAR color a gris claro
+        color: Colors.grey,
         fontSize: 15,
-        fontWeight: FontWeight.w500, // ← REDUCIR peso de fuente
+        fontWeight: FontWeight.w500,
       ),
       icon: const Icon(
         Icons.keyboard_arrow_down,
-        color: Colors.grey, // ← CAMBIAR color a gris claro
+        color: Colors.grey,
         size: 18,
       ),
       items: itemsValidos,
@@ -201,32 +216,40 @@ class _FiltroFechasState extends State<FiltroFechas> {
       return const Text('--', style: TextStyle(color: Colors.grey));
     }
     
-    // VALIDAR que el mes seleccionado esté en la lista válida
-    bool mesValido = itemsValidos.any((item) => item.value == _fechaSeleccionada.month);
+    // ← CAMBIAR: Validación sin addPostFrameCallback
+    int valorValido = _fechaSeleccionada.month;
+    bool mesValido = itemsValidos.any((item) => item.value == valorValido);
+    
     if (!mesValido && itemsValidos.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _fechaSeleccionada = DateTime(
-            _fechaSeleccionada.year,
-            itemsValidos.first.value!,
-            1,
-          );
+      valorValido = itemsValidos.first.value!;
+      // ← CAMBIAR: Actualizar inmediatamente si es necesario
+      if (_inicializado) {
+        Future.microtask(() {
+          if (mounted) {
+            setState(() {
+              _fechaSeleccionada = DateTime(
+                _fechaSeleccionada.year,
+                valorValido,
+                1,
+              );
+            });
+            widget.onFechaSeleccionada(_fechaSeleccionada);
+          }
         });
-        widget.onFechaSeleccionada(_fechaSeleccionada);
-      });
+      }
     }
     
     return DropdownButton<int>(
-      value: mesValido ? _fechaSeleccionada.month : itemsValidos.first.value,
+      value: valorValido,
       underline: const SizedBox(),
       style: const TextStyle(
-        color: Colors.grey, // ← CAMBIAR color a gris claro
+        color: Colors.grey,
         fontSize: 15,
-        fontWeight: FontWeight.w500, // ← REDUCIR peso de fuente
+        fontWeight: FontWeight.w500,
       ),
       icon: const Icon(
         Icons.keyboard_arrow_down,
-        color: Colors.grey, // ← CAMBIAR color a gris claro
+        color: Colors.grey,
         size: 18,
       ),
       items: itemsValidos,
@@ -256,28 +279,34 @@ class _FiltroFechasState extends State<FiltroFechas> {
     // Mostrar desde 2020 hasta el año actual
     final anios = List.generate(anioActual - 2019, (index) => 2020 + index);
     
-    // VALIDAR que el año actual esté en la lista
-    if (!anios.contains(_fechaSeleccionada.year)) {
-      // Si no está, usar el año actual
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _fechaSeleccionada = DateTime(anioActual, 1, 1);
+    // ← CAMBIAR: Validación sin addPostFrameCallback
+    int valorValido = _fechaSeleccionada.year;
+    if (!anios.contains(valorValido)) {
+      valorValido = anioActual;
+      // ← CAMBIAR: Actualizar inmediatamente si es necesario
+      if (_inicializado) {
+        Future.microtask(() {
+          if (mounted) {
+            setState(() {
+              _fechaSeleccionada = DateTime(valorValido, 1, 1);
+            });
+            widget.onFechaSeleccionada(_fechaSeleccionada);
+          }
         });
-        widget.onFechaSeleccionada(_fechaSeleccionada);
-      });
+      }
     }
     
     return DropdownButton<int>(
-      value: anios.contains(_fechaSeleccionada.year) ? _fechaSeleccionada.year : anioActual,
+      value: valorValido,
       underline: const SizedBox(),
       style: const TextStyle(
-        color: Colors.grey, // ← CAMBIAR color a gris claro
+        color: Colors.grey,
         fontSize: 15,
-        fontWeight: FontWeight.w500, // ← REDUCIR peso de fuente
+        fontWeight: FontWeight.w500,
       ),
       icon: const Icon(
         Icons.keyboard_arrow_down,
-        color: Colors.grey, // ← CAMBIAR color a gris claro
+        color: Colors.grey,
         size: 18,
       ),
       items: anios.map((anio) {
@@ -318,6 +347,9 @@ class _FiltroFechasState extends State<FiltroFechas> {
     );
   }
 
+  // ← SIMPLIFICAR: Remover las funciones de consulta de fechas por ahora
+  // Se pueden agregar después cuando el filtro esté funcionando estable
+
   void _navegarFecha(bool retroceder) {
     DateTime nuevaFecha;
     
@@ -342,18 +374,24 @@ class _FiltroFechasState extends State<FiltroFechas> {
     // Validar que la nueva fecha no sea futura
     final fechaActual = horaActualColombia();
     if (nuevaFecha.isAfter(fechaActual)) {
-      return; // No permitir fechas futuras
+      print('⚠️ No se puede navegar a fecha futura');
+      return;
     }
     
     // Validar que no sea anterior a 2020
     if (nuevaFecha.year < 2020) {
+      print('⚠️ No se puede navegar antes de 2020');
       return;
     }
     
     setState(() {
       _fechaSeleccionada = nuevaFecha;
     });
+    
+    // ← IMPORTANTE: Notificar el cambio
     widget.onFechaSeleccionada(_fechaSeleccionada);
+    
+    print('🔄 Navegó a fecha: $nuevaFecha');
   }
 
   List<int> _getDiasDelMes(int anio, int mes) {

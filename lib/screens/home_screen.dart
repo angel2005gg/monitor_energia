@@ -44,7 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentPage = 0;
 
   // NUEVO: Variable para controlar qué gráfica mostrar
-  String _tipoGraficaSeleccionada = 'Día'; // Opciones: 'Día', 'Mes', 'Año'
+  String _tipoGraficaSeleccionada = 'Día';
+  
+  // ← AGREGAR: Variable para la fecha seleccionada
+  DateTime _fechaSeleccionada = horaActualColombia();
+  
+  // ← AGREGAR: Key para forzar rebuild de gráficas
+  Key _graficaKey = UniqueKey();
 
   @override
   void initState() {
@@ -227,10 +233,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: FiltroFechas(
-                  tipoGrafica: _tipoGraficaSeleccionada, // ← USAR la variable de estado
+                  tipoGrafica: _tipoGraficaSeleccionada,
                   onFechaSeleccionada: (nuevaFecha) {
-                    // Manejar el cambio de fecha aquí si es necesario
-                    print('Fecha seleccionada: $nuevaFecha');
+                    print('🔄 Fecha seleccionada: $nuevaFecha');
+                    setState(() {
+                      _fechaSeleccionada = nuevaFecha;
+                      _graficaKey = UniqueKey(); // ← Forzar rebuild de la gráfica
+                    });
                   },
                 ),
               ),
@@ -240,7 +249,10 @@ class _HomeScreenState extends State<HomeScreen> {
               // CONTENEDOR DE GRÁFICAS (sin filtro interno)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildGraficaActual(),
+                child: KeyedSubtree(
+                  key: _graficaKey, // ← Usar la key para forzar rebuild
+                  child: _buildGraficaActual(),
+                ),
               ),
               const SizedBox(height: 16),
             ],
@@ -297,13 +309,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildGraficaActual() {
     switch (_tipoGraficaSeleccionada) {
       case 'Día':
-        return const GraficasPanel();
+        return GraficasPanelConFiltro(fechaSeleccionada: _fechaSeleccionada); // ← Pasar fecha
       case 'Mes':
-        return const GraficasMes(); // Usar el nuevo widget
+        return GraficasMesConFiltro(fechaSeleccionada: _fechaSeleccionada); // ← Pasar fecha
       case 'Año':
-        return const GraficasAnio(); // Usar el nuevo widget
+        return GraficasAnioConFiltro(fechaSeleccionada: _fechaSeleccionada); // ← Pasar fecha
       default:
-        return const GraficasPanel();
+        return GraficasPanelConFiltro(fechaSeleccionada: _fechaSeleccionada);
     }
   }
 
