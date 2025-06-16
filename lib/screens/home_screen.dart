@@ -148,7 +148,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // QUITAR ESTA LÍNEA: appBar: const HeaderApp(),
       backgroundColor: const Color(0xFFF4F6F8),
       body: RefreshIndicator(
         onRefresh: cargarDatos,
@@ -172,13 +171,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     // PÁGINA 1: Panel original con medidor
                     _buildPanelPrincipal(),
                     
-                    // PÁGINA 2: Panel duplicado (por ahora igual)
+                    // PÁGINA 2: Panel de resumen energético
                     _buildPanelSecundario(),
+                    
+                    // ← NUEVA PÁGINA 3: Panel terciario (vacío por ahora)
+                    _buildPanelTerciario(),
                   ],
                 ),
               ),
               
-              // INDICADORES DEL CARRUSEL
+              // INDICADORES DEL CARRUSEL - ← ACTUALIZAR PARA 3 PÁGINAS
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -186,6 +188,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildIndicator(0),
                   const SizedBox(width: 8),
                   _buildIndicator(1),
+                  const SizedBox(width: 8),
+                  _buildIndicator(2), // ← AGREGAR TERCER INDICADOR
                 ],
               ),
               
@@ -618,5 +622,193 @@ class _HomeScreenState extends State<HomeScreen> {
   String _formatFecha(DateTime fecha) {
     // Usar el formateador de utilidades que ya funciona correctamente
     return formatearHoraColombia(fecha);
+  }
+
+  // Panel terciario (página 3 del carrusel) - POR AHORA VACÍO
+  Widget _buildPanelTerciario() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: hayConexion 
+          ? const LinearGradient(
+            colors: [Color(0xFF0A2E73), Color(0xFF083A5C)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+          : const LinearGradient(
+            colors: [Color(0xFF9E9E9E), Color(0xFF616161)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: hayConexion ? Color(0xFF0A2E73).withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Título y estado de conexión
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Panel Adicional',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: hayConexion 
+                      ? Colors.green.withOpacity(0.8)
+                      : Colors.orange.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      hayConexion 
+                        ? Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        : const Icon(Icons.wifi_off, color: Colors.white, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        hayConexion ? 'Online' : 'Sin conexión',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 30),
+            
+            // ← CONTENIDO VACÍO POR AHORA - CENTRADO
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Icono placeholder
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 2,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.construction,
+                        size: 48,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Texto placeholder
+                    Text(
+                      'Próximamente',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    Text(
+                      'Esta sección estará disponible pronto',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Botones placeholder (decorativos por ahora)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildPlaceholderButton('Opción 1', Icons.analytics),
+                        const SizedBox(width: 16),
+                        _buildPlaceholderButton('Opción 2', Icons.settings),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Pie del panel
+            Center(
+              child: Text(
+                hayConexion 
+                    ? 'Actualizado: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "Cargando..."}'
+                    : 'Último dato disponible: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "No disponible"}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Botón placeholder para el panel terciario
+  Widget _buildPlaceholderButton(String texto, IconData icono) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icono,
+            size: 16,
+            color: Colors.white.withOpacity(0.7),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            texto,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
