@@ -5,12 +5,14 @@ import 'dart:convert';
 import '../utils/utilidades.dart';
 
 class ApiService {
-  // Cambiar la IP del servidor
-  static const String _baseUrl = 'http://10.10.10.5:1880';
+  // ✅ CAMBIAR: Nueva URL del servidor global con API key
+  static const String _baseUrl = 'http://190.85.61.187:1882';
+  static const String _apiKey = 'B800281080147uf'; // ← NUEVA: Clave de API
   
   static Future<Map<String, dynamic>> obtenerDatos() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('$_baseUrl/datos?t=$timestamp');
+    // ✅ CAMBIAR: Agregar API key a la URL
+    final url = Uri.parse('$_baseUrl/datos?apikey=$_apiKey&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -34,6 +36,9 @@ class ApiService {
       }
       
       return datos;
+    } else if (response.statusCode == 403) {
+      // ✅ NUEVO: Manejar error de acceso denegado
+      throw Exception('Acceso denegado - API key inválida');
     } else {
       throw Exception('Error al obtener datos: ${response.statusCode}');
     }
@@ -67,10 +72,11 @@ class ApiService {
     return true;
   }
   
-  // ACTUALIZADO: Usar nueva API de datos por hora
+  // ✅ ACTUALIZAR: Usar nueva API con clave
   static Future<List<Map<String, dynamic>>> obtenerDatosPorHora() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('$_baseUrl/datos/horas?t=$timestamp');
+    // ✅ CAMBIAR: Agregar API key a la URL
+    final url = Uri.parse('$_baseUrl/datos/horas?apikey=$_apiKey&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -211,6 +217,9 @@ class ApiService {
         }
         
         throw Exception('Estructura de datos no reconocida');
+      } else if (response.statusCode == 403) {
+        // ✅ NUEVO: Manejar error de acceso denegado
+        throw Exception('Acceso denegado - API key inválida');
       } else {
         throw Exception('Error al obtener datos por hora: ${response.statusCode}');
       }
@@ -220,10 +229,11 @@ class ApiService {
     }
   }
 
-  // ACTUALIZADO: Usar nueva API de datos por mes - MEJORAR LA FUNCIÓN ORIGINAL TAMBIÉN
+  // ✅ ACTUALIZAR: Usar nueva API con clave - datos por mes
   static Future<List<Map<String, dynamic>>> obtenerDatosPorMes() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('$_baseUrl/datos/mes?t=$timestamp');
+    // ✅ CAMBIAR: Agregar API key a la URL
+    final url = Uri.parse('$_baseUrl/datos/mes?apikey=$_apiKey&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -274,15 +284,19 @@ class ApiService {
       
       print('Datos mensuales procesados: ${datosFormateados.length} registros');
       return datosFormateados;
+    } else if (response.statusCode == 403) {
+      // ✅ NUEVO: Manejar error de acceso denegado
+      throw Exception('Acceso denegado - API key inválida');
     } else {
       throw Exception('Error al obtener datos mensuales: ${response.statusCode}');
     }
   }
 
-  // ACTUALIZADO: Usar nueva API de datos por año - MEJORAR LA FUNCIÓN ORIGINAL TAMBIÉN
+  // ✅ ACTUALIZAR: Usar nueva API con clave - datos por año
   static Future<List<Map<String, dynamic>>> obtenerDatosPorAnio() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('$_baseUrl/datos/anio?t=$timestamp');
+    // ✅ CAMBIAR: Agregar API key a la URL
+    final url = Uri.parse('$_baseUrl/datos/anio?apikey=$_apiKey&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -334,17 +348,19 @@ class ApiService {
       
       print('Datos anuales procesados: ${datosFormateados.length} registros');
       return datosFormateados;
+    } else if (response.statusCode == 403) {
+      // ✅ NUEVO: Manejar error de acceso denegado
+      throw Exception('Acceso denegado - API key inválida');
     } else {
       throw Exception('Error al obtener datos anuales: ${response.statusCode}');
     }
   }
 
-  // ← AGREGAR estas nuevas funciones al ApiService
-
-  // Función para datos por hora con filtro
+  // ✅ ACTUALIZAR: Función para datos por hora con filtro
   static Future<List<Map<String, dynamic>>> obtenerDatosPorHoraConFiltro(String inicio, String fin) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('$_baseUrl/datos/horas?inicio=$inicio&fin=$fin&t=$timestamp');
+    // ✅ CAMBIAR: Agregar API key a la URL
+    final url = Uri.parse('$_baseUrl/datos/horas?apikey=$_apiKey&inicio=$inicio&fin=$fin&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -432,6 +448,9 @@ class ApiService {
         }
         
         throw Exception('Estructura de datos no reconocida');
+      } else if (response.statusCode == 403) {
+        // ✅ NUEVO: Manejar error de acceso denegado
+        throw Exception('Acceso denegado - API key inválida');
       } else {
         throw Exception('Error al obtener datos por hora con filtro: ${response.statusCode}');
       }
@@ -441,10 +460,11 @@ class ApiService {
     }
   }
 
-  // Función para datos por mes con filtro - CORREGIR COMPLETAMENTE
+  // ✅ ACTUALIZAR: Función para datos por mes con filtro
   static Future<List<Map<String, dynamic>>> obtenerDatosPorMesConFiltro(String inicio, String fin) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('$_baseUrl/datos/mes?inicio=$inicio&fin=$fin&t=$timestamp');
+    // ✅ CAMBIAR: Agregar API key a la URL
+    final url = Uri.parse('$_baseUrl/datos/mes?apikey=$_apiKey&inicio=$inicio&fin=$fin&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -512,6 +532,9 @@ class ApiService {
         }
         
         throw Exception('Estructura de datos mensuales no reconocida');
+      } else if (response.statusCode == 403) {
+        // ✅ NUEVO: Manejar error de acceso denegado
+        throw Exception('Acceso denegado - API key inválida');
       } else {
         throw Exception('Error al obtener datos mensuales con filtro: ${response.statusCode}');
       }
@@ -521,10 +544,11 @@ class ApiService {
     }
   }
 
-  // Función para datos por año con filtro - CORREGIR COMPLETAMENTE  
+  // ✅ ACTUALIZAR: Función para datos por año con filtro
   static Future<List<Map<String, dynamic>>> obtenerDatosPorAnioConFiltro(String inicio, String fin) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('$_baseUrl/datos/anio?inicio=$inicio&fin=$fin&t=$timestamp');
+    // ✅ CAMBIAR: Agregar API key a la URL
+    final url = Uri.parse('$_baseUrl/datos/anio?apikey=$_apiKey&inicio=$inicio&fin=$fin&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -593,6 +617,9 @@ class ApiService {
         }
         
         throw Exception('Estructura de datos anuales no reconocida');
+      } else if (response.statusCode == 403) {
+        // ✅ NUEVO: Manejar error de acceso denegado
+        throw Exception('Acceso denegado - API key inválida');
       } else {
         throw Exception('Error al obtener datos anuales con filtro: ${response.statusCode}');
       }
@@ -600,64 +627,5 @@ class ApiService {
       print('💥 Error en datos anuales con filtro: $e');
       throw Exception('Error de conexión en datos anuales con filtro: $e');
     }
-  }
-  
-  // NUEVO: Función privada para procesar datos de horas (usada en obtenerDatosPorHora y obtenerDatosPorHoraConFiltro)
-  static List<Map<String, dynamic>> _procesarDatosHoras(Map<String, dynamic> data) {
-    List<Map<String, dynamic>> datosFormateados = [];
-    
-    if (data['energiaHoras'] != null && data['energiaHoras'] is List) {
-      // NUEVO: Obtener la fecha actual en Colombia
-      final fechaHoyColombia = horaActualColombia();
-      final fechaHoyStr = '${fechaHoyColombia.year}-${fechaHoyColombia.month.toString().padLeft(2, '0')}-${fechaHoyColombia.day.toString().padLeft(2, '0')}';
-      
-      print('📅 Fecha de hoy Colombia: $fechaHoyStr');
-      
-      // NUEVO: Procesar y agrupar datos por hora del día actual
-      Map<int, double> energiaPorHora = {};
-      
-      for (var item in data['energiaHoras']) {
-        try {
-          DateTime timestampUTC = DateTime.parse(item['timestamp']);
-          DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5)); // Convertir a Colombia
-          
-          // Verificar si es del día actual
-          String fechaItem = '${timestampColombia.year}-${timestampColombia.month.toString().padLeft(2, '0')}-${timestampColombia.day.toString().padLeft(2, '0')}';
-          
-          print('🔍 Procesando: $timestampUTC -> $timestampColombia (fecha: $fechaItem)');
-          
-          if (fechaItem == fechaHoyStr) {
-            int hora = timestampColombia.hour;
-            double energia = (item['energia'] ?? 0).toDouble();
-            
-            // Si ya existe datos para esta hora, sumar la energía
-            if (energiaPorHora.containsKey(hora)) {
-              energiaPorHora[hora] = energiaPorHora[hora]! + energia;
-            } else {
-              energiaPorHora[hora] = energia;
-            }
-            
-            print('⏰ Hora: $hora, Energía acumulada: ${energiaPorHora[hora]}');
-          } else {
-            print('❌ Dato no es de hoy: $fechaItem (esperado: $fechaHoyStr)');
-          }
-        } catch (e) {
-          print('❌ Error procesando timestamp ${item['timestamp']}: $e');
-        }
-      }
-      
-      // NUEVO: Convertir el mapa a lista ordenada
-      List<int> horasOrdenadas = energiaPorHora.keys.toList()..sort();
-      
-      for (int hora in horasOrdenadas) {
-        datosFormateados.add({
-          'hora': hora,
-          'energia': energiaPorHora[hora]!,
-          'timestamp': DateTime.now().millisecondsSinceEpoch
-        });
-      }
-    }
-    
-    return datosFormateados;
   }
 }
