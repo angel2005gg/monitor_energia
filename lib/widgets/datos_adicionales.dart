@@ -53,16 +53,37 @@ class _DatosAdicionalesState extends State<DatosAdicionales> {
       
       if (!mounted) return;
       
-      // ← CAMBIAR: Procesar los datos correctos de la API
+      // ← CAMBIO: Solo procesar si los datos existen en la API
       final factorPotencia = datos['factorDePotencia'];
-      ultimoFactorDePotencia = _procesarFactorPotencia(factorPotencia);
-      
       final porcentajePot = datos['porcentajePotencia'];
-      ultimoPorcentajePotencia = _procesarPorcentajePotencia(porcentajePot);
+      
+      // ← CAMBIO: Si no existen los datos, no mostrar el panel
+      if (factorPotencia == null && porcentajePot == null) {
+        // No hay datos disponibles, mantener loading o mostrar mensaje
+        setState(() {
+          isLoading = false;
+          hayConexion = true;
+          // No actualizar las variables si no hay datos
+        });
+        return;
+      }
+      
+      // Solo procesar si al menos uno de los datos existe
+      if (factorPotencia != null) {
+        ultimoFactorDePotencia = _procesarFactorPotencia(factorPotencia);
+      }
+      
+      if (porcentajePot != null) {
+        ultimoPorcentajePotencia = _procesarPorcentajePotencia(porcentajePot);
+      }
       
       setState(() {
-        factorDePotencia = ultimoFactorDePotencia!;
-        porcentajePotencia = ultimoPorcentajePotencia!;
+        if (ultimoFactorDePotencia != null) {
+          factorDePotencia = ultimoFactorDePotencia!;
+        }
+        if (ultimoPorcentajePotencia != null) {
+          porcentajePotencia = ultimoPorcentajePotencia!;
+        }
         
         ultimaActualizacion = ahora;
         isLoading = false;
@@ -76,11 +97,9 @@ class _DatosAdicionalesState extends State<DatosAdicionales> {
         // Usar últimos datos válidos si existen
         if (ultimoFactorDePotencia != null) {
           factorDePotencia = ultimoFactorDePotencia!;
+        }
+        if (ultimoPorcentajePotencia != null) {
           porcentajePotencia = ultimoPorcentajePotencia!;
-        } else {
-          // ← CAMBIAR: Valores por defecto más realistas
-          factorDePotencia = '0.95'; // ← CAMBIO: Solo el número, sin "(normal)"
-          porcentajePotencia = '22.8%'; // ← CAMBIO: Valor más realista por defecto
         }
         
         isLoading = false;
@@ -89,34 +108,31 @@ class _DatosAdicionalesState extends State<DatosAdicionales> {
     }
   }
 
-  // ← CAMBIAR estas dos funciones de procesamiento:
-
+  // ← CAMBIO: Actualizar las funciones de procesamiento para no poner valores por defecto automáticamente
   String _procesarFactorPotencia(dynamic valor) {
     if (valor == null || 
         valor.toString().toLowerCase().contains('no disponible') ||
         valor.toString().toLowerCase().contains('no available') ||
         valor.toString().trim().isEmpty) {
-      return '0.95'; // ← CAMBIO: Solo el número, sin "(normal)"
+      return ''; // ← CAMBIO: Devolver cadena vacía en lugar de valor por defecto
     }
     
     String valorStr = valor.toString();
     
-    // ← CAMBIO: Quitar completamente la parte "(fuera de rango)"
+    // Quitar la parte "(fuera de rango)" si existe
     if (valorStr.contains('(')) {
-      // Extraer solo el número antes del paréntesis
       valorStr = valorStr.split('(')[0].trim();
     }
     
-    // ← CAMBIO: No agregar evaluaciones, solo devolver el número limpio
     try {
-      double numero = double.tryParse(valorStr) ?? 0.95;
-      return numero.toStringAsFixed(2); // Formato con 2 decimales
+      double numero = double.tryParse(valorStr) ?? 0.0;
+      return numero.toStringAsFixed(2);
     } catch (e) {
-      return '0.95'; // Valor por defecto
+      return ''; // ← CAMBIO: Devolver cadena vacía en caso de error
     }
   }
 
-  // ← CAMBIAR: Función para procesar porcentaje de potencia
+  // ← CAMBIO: Función para procesar porcentaje de potencia
   String _procesarPorcentajePotencia(dynamic valor) {
     if (valor == null || 
         valor.toString().toLowerCase().contains('no disponible') ||
@@ -126,7 +142,7 @@ class _DatosAdicionalesState extends State<DatosAdicionales> {
         valor.toString() == '0.0' ||
         valor.toString() == '0.00' ||
         valor.toString() == '0.00%') {
-      return '22.8%'; // ← SOLO CAMBIAR ESTE VALOR
+      return ''; // ← CAMBIO: Devolver cadena vacía en lugar de valor por defecto
     }
     
     String valorStr = valor.toString();
@@ -218,35 +234,72 @@ class _DatosAdicionalesState extends State<DatosAdicionales> {
               const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               )
+            else if (factorDePotencia.isEmpty && porcentajePotencia.isEmpty)
+              // ← NUEVO: Mostrar mensaje cuando no hay datos disponibles
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.data_usage_outlined,
+                        size: 48,
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Datos no disponibles',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Esperando datos del sistema...',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
             else
-              // ← VOLVER AL DISEÑO HORIZONTAL ORIGINAL
+              // ← MOSTRAR solo si hay al menos un dato disponible
               Expanded(
                 child: Column(
                   children: [
-                    // ← DISEÑO HORIZONTAL: Fila con los 2 datos lado a lado
                     Row(
                       children: [
-                        // Primera métrica: Factor de Potencia
-                        Expanded(
-                          child: _buildMetricaCompacta(
-                            'Factor de Potencia',
-                            factorDePotencia,
-                            Icons.speed,
-                            Colors.blue,
+                        // Factor de Potencia - solo mostrar si tiene datos
+                        if (factorDePotencia.isNotEmpty)
+                          Expanded(
+                            child: _buildMetricaCompacta(
+                              'Factor de Potencia',
+                              factorDePotencia,
+                              Icons.speed,
+                              Colors.blue,
+                            ),
                           ),
-                        ),
                         
-                        const SizedBox(width: 12),
+                        // Espaciado solo si ambos datos existen
+                        if (factorDePotencia.isNotEmpty && porcentajePotencia.isNotEmpty)
+                          const SizedBox(width: 12),
                         
-                        // Segunda métrica: Porcentaje de Potencia
-                        Expanded(
-                          child: _buildMetricaCompacta(
-                            'Porcentaje de Potencia',
-                            porcentajePotencia,
-                            Icons.percent,
-                            Colors.green,
+                        // Porcentaje de Potencia - solo mostrar si tiene datos
+                        if (porcentajePotencia.isNotEmpty)
+                          Expanded(
+                            child: _buildMetricaCompacta(
+                              'Porcentaje de Potencia',
+                              porcentajePotencia,
+                              Icons.percent,
+                              Colors.green,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                     
@@ -285,7 +338,7 @@ class _DatosAdicionalesState extends State<DatosAdicionales> {
                       ),
                     ),
                     
-                    const Spacer(), // ← EMPUJAR hacia abajo
+                    const Spacer(),
                     
                     // Pie del panel
                     Center(

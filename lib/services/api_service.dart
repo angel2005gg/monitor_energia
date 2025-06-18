@@ -26,14 +26,14 @@ class ApiService {
       
       final datos = json.decode(response.body);
       
-      // ← AGREGAR: Simular los nuevos campos si no existen en la API
-      if (!datos.containsKey('porcentajeEficiencia')) {
-        datos['porcentajeEficiencia'] = '18.7'; // Porcentaje realista
-      }
-      
-      if (!datos.containsKey('factorDePotencia')) {
-        datos['factorDePotencia'] = '20.481'; // Valor como viene en tu ejemplo
-      }
+      // ← QUITAR: Ya no simular datos que no existen
+      // if (!datos.containsKey('porcentajeEficiencia')) {
+      //   datos['porcentajeEficiencia'] = '18.7';
+      // }
+      // 
+      // if (!datos.containsKey('factorDePotencia')) {
+      //   datos['factorDePotencia'] = '20.481';
+      // }
       
       // NUEVA VALIDACIÓN: Verificar si los datos son válidos
       bool datosValidos = _validarDatos(datos);
@@ -82,7 +82,6 @@ class ApiService {
   // ✅ ACTUALIZAR: Usar nueva API con clave
   static Future<List<Map<String, dynamic>>> obtenerDatosPorHora() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    // ✅ CAMBIAR: Agregar API key a la URL
     final url = Uri.parse('$_baseUrl/datos/horas?apikey=$_apiKey&t=$timestamp');
     
     final headers = {
@@ -107,19 +106,19 @@ class ApiService {
           List<Map<String, dynamic>> datosFormateados = [];
           
           if (data['energiaHoras'] != null && data['energiaHoras'] is List) {
-            // NUEVO: Obtener la fecha actual en Colombia
+            // Obtener la fecha actual en Colombia
             final fechaHoyColombia = horaActualColombia();
             final fechaHoyStr = '${fechaHoyColombia.year}-${fechaHoyColombia.month.toString().padLeft(2, '0')}-${fechaHoyColombia.day.toString().padLeft(2, '0')}';
             
             print('📅 Fecha de hoy Colombia: $fechaHoyStr');
             
-            // NUEVO: Procesar y agrupar datos por hora del día actual
+            // ← CAMBIO: Solo procesar datos que existen, no crear horas futuras
             Map<int, double> energiaPorHora = {};
             
             for (var item in data['energiaHoras']) {
               try {
                 DateTime timestampUTC = DateTime.parse(item['timestamp']);
-                DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5)); // Convertir a Colombia
+                DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5));
                 
                 // Verificar si es del día actual
                 String fechaItem = '${timestampColombia.year}-${timestampColombia.month.toString().padLeft(2, '0')}-${timestampColombia.day.toString().padLeft(2, '0')}';
@@ -128,16 +127,22 @@ class ApiService {
                 
                 if (fechaItem == fechaHoyStr) {
                   int hora = timestampColombia.hour;
-                  double energia = (item['energia'] ?? 0).toDouble();
                   
-                  // Si ya existe datos para esta hora, sumar la energía
-                  if (energiaPorHora.containsKey(hora)) {
-                    energiaPorHora[hora] = energiaPorHora[hora]! + energia;
+                  // Filtro: Solo horas entre 6 AM (6) y 7 PM (19)
+                  if (hora >= 6 && hora <= 19) {
+                    double energia = (item['energia'] ?? 0).toDouble();
+                    
+                    // Si ya existe datos para esta hora, sumar la energía
+                    if (energiaPorHora.containsKey(hora)) {
+                      energiaPorHora[hora] = energiaPorHora[hora]! + energia;
+                    } else {
+                      energiaPorHora[hora] = energia;
+                    }
+                    
+                    print('⏰ Hora: $hora (dentro del rango 6-19), Energía acumulada: ${energiaPorHora[hora]}');
                   } else {
-                    energiaPorHora[hora] = energia;
+                    print('🌙 Hora: $hora (fuera del rango 6-19) - ignorando');
                   }
-                  
-                  print('⏰ Hora: $hora, Energía acumulada: ${energiaPorHora[hora]}');
                 } else {
                   print('❌ Dato no es de hoy: $fechaItem (esperado: $fechaHoyStr)');
                 }
@@ -146,10 +151,25 @@ class ApiService {
               }
             }
             
-            // NUEVO: Convertir el mapa a lista ordenada
-            List<int> horasOrdenadas = energiaPorHora.keys.toList()..sort();
+            // ← CAMBIO PRINCIPAL: NO crear horas futuras, solo usar datos reales
+            if (energiaPorHora.isEmpty) {
+              print('⚠️ No hay datos del día actual en el rango 6-19');
+              // ← NO crear estructura base - dejar vacío
+              return []; // ← Devolver lista vacía en lugar de crear datos falsos
+            }
             
-            for (int hora in horasOrdenadas) {
+            // ← NO completar horas faltantes - solo usar las que tienen datos reales
+            // Comentar estas líneas:
+            // for (int hora = 6; hora <= 19; hora++) {
+            //   if (!energiaPorHora.containsKey(hora)) {
+            //     energiaPorHora[hora] = 0.0;
+            //   }
+            // }
+            
+            // Convertir solo las horas que tienen datos reales
+            List<int> horasConDatos = energiaPorHora.keys.toList()..sort();
+            
+            for (int hora in horasConDatos) {
               datosFormateados.add({
                 'hora': hora,
                 'energia': energiaPorHora[hora]!,
@@ -157,66 +177,7 @@ class ApiService {
               });
             }
             
-            // Si no hay datos del día actual, mostrar los datos más recientes
-            if (datosFormateados.isEmpty) {
-              print('⚠️ No hay datos del día actual, usando datos más recientes...');
-              
-              // Encontrar la fecha más reciente
-              DateTime fechaMasReciente = DateTime(2000);
-              for (var item in data['energiaHoras']) {
-                try {
-                  DateTime timestampUTC = DateTime.parse(item['timestamp']);
-                  DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5));
-                  
-                  if (timestampColombia.isAfter(fechaMasReciente)) {
-                    fechaMasReciente = timestampColombia;
-                  }
-                } catch (e) {
-                  // Ignorar timestamps malformados
-                }
-              }
-              
-              // Obtener todos los datos de la fecha más reciente
-              String fechaMasRecienteStr = '${fechaMasReciente.year}-${fechaMasReciente.month.toString().padLeft(2, '0')}-${fechaMasReciente.day.toString().padLeft(2, '0')}';
-              print('📅 Usando datos de la fecha más reciente: $fechaMasRecienteStr');
-              
-              Map<int, double> energiaPorHoraMasReciente = {};
-              
-              for (var item in data['energiaHoras']) {
-                try {
-                  DateTime timestampUTC = DateTime.parse(item['timestamp']);
-                  DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5));
-                  
-                  String fechaItem = '${timestampColombia.year}-${timestampColombia.month.toString().padLeft(2, '0')}-${timestampColombia.day.toString().padLeft(2, '0')}';
-                  
-                  if (fechaItem == fechaMasRecienteStr) {
-                    int hora = timestampColombia.hour;
-                    double energia = (item['energia'] ?? 0).toDouble();
-                    
-                    if (energiaPorHoraMasReciente.containsKey(hora)) {
-                      energiaPorHoraMasReciente[hora] = energiaPorHoraMasReciente[hora]! + energia;
-                    } else {
-                      energiaPorHoraMasReciente[hora] = energia;
-                    }
-                  }
-                } catch (e) {
-                  // Ignorar errores
-                }
-              }
-              
-              // Convertir a lista
-              List<int> horasOrdenadasMasReciente = energiaPorHoraMasReciente.keys.toList()..sort();
-              
-              for (int hora in horasOrdenadasMasReciente) {
-                datosFormateados.add({
-                  'hora': hora,
-                  'energia': energiaPorHoraMasReciente[hora]!,
-                  'timestamp': DateTime.now().millisecondsSinceEpoch
-                });
-              }
-            }
-            
-            print('📊 Datos formateados finales: $datosFormateados');
+            print('📊 Datos formateados finales (solo horas con datos reales): $datosFormateados');
             print('📊 Total de datos procesados: ${datosFormateados.length}');
             
             return datosFormateados;
@@ -225,7 +186,6 @@ class ApiService {
         
         throw Exception('Estructura de datos no reconocida');
       } else if (response.statusCode == 403) {
-        // ✅ NUEVO: Manejar error de acceso denegado
         throw Exception('Acceso denegado - API key inválida');
       } else {
         throw Exception('Error al obtener datos por hora: ${response.statusCode}');
@@ -391,49 +351,70 @@ class ApiService {
           List<Map<String, dynamic>> datosFormateados = [];
           
           if (data['energiaHoras'] != null && data['energiaHoras'] is List) {
-            // ✅ CORREGIDO: Extraer la fecha del parámetro inicio en lugar de usar hoy
+            // Extraer la fecha del parámetro inicio
             DateTime fechaInicio = DateTime.parse(inicio.split('T')[0]);
             final fechaBuscadaStr = '${fechaInicio.year}-${fechaInicio.month.toString().padLeft(2, '0')}-${fechaInicio.day.toString().padLeft(2, '0')}';
             
             print('📅 Fecha buscada desde filtro: $fechaBuscadaStr (inicio: $inicio)');
             
-            // ✅ CORREGIDO: Procesar y agrupar datos por hora de la fecha seleccionada
+            // ← CAMBIO: Solo procesar datos que existen, no crear horas futuras
             Map<int, double> energiaPorHora = {};
             
             for (var item in data['energiaHoras']) {
               try {
                 DateTime timestampUTC = DateTime.parse(item['timestamp']);
-                DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5)); // Convertir a Colombia
+                DateTime timestampColombia = timestampUTC.subtract(Duration(hours: 5));
                 
-                // ✅ CORREGIDO: Verificar si es de la fecha seleccionada (no siempre hoy)
+                // Verificar si es de la fecha seleccionada
                 String fechaItem = '${timestampColombia.year}-${timestampColombia.month.toString().padLeft(2, '0')}-${timestampColombia.day.toString().padLeft(2, '0')}';
                 
                 print('🔍 Procesando: $timestampUTC -> $timestampColombia (fecha: $fechaItem)');
                 
-                if (fechaItem == fechaBuscadaStr) { // ✅ CAMBIO PRINCIPAL: Comparar con fecha seleccionada
+                if (fechaItem == fechaBuscadaStr) {
                   int hora = timestampColombia.hour;
-                  double energia = (item['energia'] ?? 0).toDouble();
                   
-                  // Si ya existe datos para esta hora, sumar la energía
-                  if (energiaPorHora.containsKey(hora)) {
-                    energiaPorHora[hora] = energiaPorHora[hora]! + energia;
+                  // Filtro: Solo horas entre 6 AM (6) y 7 PM (19)
+                  if (hora >= 6 && hora <= 19) {
+                    double energia = (item['energia'] ?? 0).toDouble();
+                    
+                    // Si ya existe datos para esta hora, sumar la energía
+                    if (energiaPorHora.containsKey(hora)) {
+                      energiaPorHora[hora] = energiaPorHora[hora]! + energia;
+                    } else {
+                      energiaPorHora[hora] = energia;
+                    }
+                    
+                    print('⏰ Hora: $hora (dentro del rango 6-19), Energía acumulada: ${energiaPorHora[hora]}');
                   } else {
-                    energiaPorHora[hora] = energia;
+                    print('🌙 Hora: $hora (fuera del rango 6-19) - ignorando');
                   }
-                  
-                  print('⏰ Hora: $hora, Energía acumulada: ${energiaPorHora[hora]}');
                 } else {
-                  print('❌ Dato no es de la fecha buscada: $fechaItem (esperado: $fechaBuscadaStr)');
+                  print('❌ Dato no es de la fecha seleccionada: $fechaItem (esperado: $fechaBuscadaStr)');
                 }
               } catch (e) {
                 print('❌ Error procesando timestamp ${item['timestamp']}: $e');
               }
             }
             
-            // ✅ CORREGIDO: Convertir el mapa a lista ordenada
-            List<int> horasOrdenadas = energiaPorHora.keys.toList()..sort();
+            // ← CAMBIO PRINCIPAL: NO crear horas futuras, solo usar datos reales
+            if (energiaPorHora.isEmpty) {
+              print('⚠️ No hay datos de la fecha seleccionada en el rango 6-19');
+              // ← NO crear estructura base - dejar vacío
+              return []; // ← Devolver lista vacía en lugar de crear datos falsos
+            }
             
-            for (int hora in horasOrdenadas) {
+            // ← NO completar horas faltantes - solo usar las que tienen datos reales
+            // Comentar estas líneas:
+            // for (int hora = 6; hora <= 19; hora++) {
+            //   if (!energiaPorHora.containsKey(hora)) {
+            //     energiaPorHora[hora] = 0.0;
+            //   }
+            // }
+            
+            // Convertir solo las horas que tienen datos reales
+            List<int> horasConDatos = energiaPorHora.keys.toList()..sort();
+            
+            for (int hora in horasConDatos) {
               datosFormateados.add({
                 'hora': hora,
                 'energia': energiaPorHora[hora]!,
@@ -441,13 +422,7 @@ class ApiService {
               });
             }
             
-            // ✅ MEJORADO: Si no hay datos de la fecha seleccionada, NO mostrar datos de otras fechas
-            if (datosFormateados.isEmpty) {
-              print('⚠️ No hay datos para la fecha seleccionada: $fechaBuscadaStr');
-              // No hacer fallback a otras fechas - el usuario seleccionó una fecha específica
-            }
-            
-            print('📊 Datos formateados finales para $fechaBuscadaStr: $datosFormateados');
+            print('📊 Datos formateados finales para $fechaBuscadaStr (solo horas con datos reales): $datosFormateados');
             print('📊 Total de datos procesados: ${datosFormateados.length}');
             
             return datosFormateados;
@@ -456,7 +431,6 @@ class ApiService {
         
         throw Exception('Estructura de datos no reconocida');
       } else if (response.statusCode == 403) {
-        // ✅ NUEVO: Manejar error de acceso denegado
         throw Exception('Acceso denegado - API key inválida');
       } else {
         throw Exception('Error al obtener datos por hora con filtro: ${response.statusCode}');
