@@ -11,6 +11,7 @@ import '../utils/utilidades.dart';
 import '../widgets/filtro_fechas.dart'; // ← IMPORTAR el nuevo widget
 import '../widgets/datos_dc.dart'; // ← NUEVA LÍNEA
 import '../widgets/datos_ac.dart'; // ← NUEVA LÍNEA
+import '../widgets/datos_adicionales.dart'; // ← NUEVA LÍNEA
 
 
 class HomeScreen extends StatefulWidget {
@@ -179,13 +180,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     // PÁGINA 3: Panel de datos DC
                     _buildPanelTerciario(),
                     
-                    // ← NUEVA PÁGINA 4: Panel cuaternario (vacío por ahora)
+                    // PÁGINA 4: Panel de datos AC
                     _buildPanelCuaternario(),
+                    
+                    // ← NUEVA PÁGINA 5: Panel quinario (vacío por ahora)
+                    _buildPanelQuinario(),
                   ],
                 ),
               ),
               
-              // INDICADORES DEL CARRUSEL - ← ACTUALIZAR PARA 4 PÁGINAS
+              // INDICADORES DEL CARRUSEL - ← ACTUALIZAR PARA 5 PÁGINAS
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -196,7 +200,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 8),
                   _buildIndicator(2),
                   const SizedBox(width: 8),
-                  _buildIndicator(3), // ← AGREGAR CUARTO INDICADOR
+                  _buildIndicator(3),
+                  const SizedBox(width: 8),
+                  _buildIndicator(4), // ← AGREGAR QUINTO INDICADOR
                 ],
               ),
               
@@ -644,6 +650,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: const DatosAC(), // ← USAR el nuevo widget de datos AC
+    );
+  }
+
+  // Panel quinario (página 5 del carrusel) - VACÍO POR AHORA
+  Widget _buildPanelQuinario() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: const DatosAdicionales(), // ← USAR el nuevo widget
     );
   }
 }
