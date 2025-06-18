@@ -160,7 +160,7 @@ class _DatosACState extends State<DatosAC> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12), // ← MANTENER compacto
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -208,7 +208,7 @@ class _DatosACState extends State<DatosAC> {
               ],
             ),
             
-            const SizedBox(height: 20),
+            const SizedBox(height: 10), // ← REDUCIDO: era 14
             
             if (isLoading)
               const Center(
@@ -223,9 +223,9 @@ class _DatosACState extends State<DatosAC> {
                     Expanded(
                       child: Column(
                         children: [
-                          // Título de columna
+                          // Título de columna con icono principal - MÁS COMPACTO
                           Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 6), // ← REDUCIDO: era 8
                             decoration: BoxDecoration(
                               color: Colors.blue.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(8),
@@ -234,13 +234,13 @@ class _DatosACState extends State<DatosAC> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.electrical_services, color: Colors.blue, size: 20),
-                                  const SizedBox(width: 8),
+                                  Icon(Icons.electrical_services, color: Colors.blue, size: 16), // ← REDUCIDO: era 18
+                                  const SizedBox(width: 6),
                                   const Text(
                                     'Voltajes AC',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 14,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -249,48 +249,45 @@ class _DatosACState extends State<DatosAC> {
                             ),
                           ),
                           
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8), // ← REDUCIDO: era 10
                           
                           // Fase A - Voltaje
                           _buildItemAC(
                             'Fase A',
                             voltajeFaseA,
-                            Icons.electric_bolt,
                             Colors.blue,
                           ),
                           
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 4), // ← REDUCIDO: era 6
                           
                           // Fase B - Voltaje
                           _buildItemAC(
                             'Fase B',
                             voltajeFaseB,
-                            Icons.electric_bolt,
                             Colors.lightBlue,
                           ),
                           
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 4), // ← REDUCIDO: era 6
                           
                           // Fase C - Voltaje
                           _buildItemAC(
                             'Fase C',
                             voltajeFaseC,
-                            Icons.electric_bolt,
                             Colors.cyan,
                           ),
                         ],
                       ),
                     ),
                     
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12), // ← REDUCIDO: era 14
                     
                     // ← COLUMNA 2: CORRIENTES
                     Expanded(
                       child: Column(
                         children: [
-                          // Título de columna
+                          // Título de columna con icono principal
                           Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 6), // ← REDUCIDO: era 8
                             decoration: BoxDecoration(
                               color: Colors.orange.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(8),
@@ -299,13 +296,13 @@ class _DatosACState extends State<DatosAC> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.flash_on, color: Colors.orange, size: 20),
-                                  const SizedBox(width: 8),
+                                  Icon(Icons.flash_on, color: Colors.orange, size: 16), // ← REDUCIDO: era 18
+                                  const SizedBox(width: 6),
                                   const Text(
                                     'Corrientes AC',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 14,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -314,33 +311,30 @@ class _DatosACState extends State<DatosAC> {
                             ),
                           ),
                           
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8), // ← REDUCIDO: era 10
                           
                           // Fase A - Corriente
                           _buildItemAC(
                             'Fase A',
                             corrienteFaseA,
-                            Icons.flash_on,
                             Colors.orange,
                           ),
                           
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 4), // ← REDUCIDO: era 6
                           
                           // Fase B - Corriente
                           _buildItemAC(
                             'Fase B',
                             corrienteFaseB,
-                            Icons.flash_on,
                             Colors.amber,
                           ),
                           
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 4), // ← REDUCIDO: era 6
                           
                           // Fase C - Corriente
                           _buildItemAC(
                             'Fase C',
                             corrienteFaseC,
-                            Icons.flash_on,
                             Colors.deepOrange,
                           ),
                         ],
@@ -350,7 +344,7 @@ class _DatosACState extends State<DatosAC> {
                 ),
               ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 8), // ← REDUCIDO: era 10
             
             // Pie del panel
             Center(
@@ -358,7 +352,7 @@ class _DatosACState extends State<DatosAC> {
                 hayConexion 
                     ? 'Actualizado: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "Cargando..."}'
                     : 'Último dato disponible: ${ultimaActualizacion != null ? _formatFecha(ultimaActualizacion!) : "No disponible"}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
               ),
             ),
           ],
@@ -367,46 +361,41 @@ class _DatosACState extends State<DatosAC> {
     );
   }
 
-  Widget _buildItemAC(String fase, String valor, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
+  // ← ACTUALIZAR esta función para quitar el icono individual:
+  Widget _buildItemAC(String fase, String valor, Color color) {
+    return Padding( // ← CAMBIO: Container por Padding simple
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8), // ← REDUCIDO: era 8,10
+      // ← ELIMINAR: Todo el decoration (cajas de colores)
       child: Column(
         children: [
+          // ← MANTENER: Icono pequeño arriba de cada fase
           Icon(
-            icon,
+            _getIconoPorTipo(fase, color),
             color: color,
-            size: 24,
+            size: 14, // ← REDUCIDO: era 16
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 3), // ← REDUCIDO: era 4
           Text(
             fase,
             style: const TextStyle(
               color: Colors.white70,
-              fontSize: 12,
+              fontSize: 11, // ← REDUCIDO: era 12
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2), // ← REDUCIDO: era 4
           Text(
             valor,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 13, // ← REDUCIDO: era 14
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2), // ← REDUCIDO: era 4
           Container(
-            height: 2,
-            width: 30,
+            height: 1.5,
+            width: 20, // ← REDUCIDO: era 24
             decoration: BoxDecoration(
               color: color.withOpacity(0.5),
               borderRadius: BorderRadius.circular(1),
@@ -415,6 +404,28 @@ class _DatosACState extends State<DatosAC> {
         ],
       ),
     );
+  }
+
+  // ← AGREGAR esta nueva función para obtener iconos específicos por fase:
+  IconData _getIconoPorTipo(String fase, Color color) {
+    // Iconos diferentes según el color (voltaje vs corriente)
+    if (color == Colors.blue || color == Colors.cyan || color == Colors.lightBlue) {
+      // Para voltajes: usar iconos eléctricos
+      switch (fase) {
+        case 'Fase A': return Icons.electric_bolt;
+        case 'Fase B': return Icons.power;
+        case 'Fase C': return Icons.electrical_services;
+        default: return Icons.electric_bolt;
+      }
+    } else {
+      // Para corrientes: usar iconos de energía
+      switch (fase) {
+        case 'Fase A': return Icons.flash_on;
+        case 'Fase B': return Icons.bolt;
+        case 'Fase C': return Icons.energy_savings_leaf;
+        default: return Icons.flash_on;
+      }
+    }
   }
 
   String _formatFecha(DateTime fecha) {
