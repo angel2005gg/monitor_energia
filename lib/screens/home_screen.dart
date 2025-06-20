@@ -247,6 +247,8 @@ class _HomeScreenState extends State<HomeScreen> {
               
               // ← AGREGAR FILTRO AQUÍ (debajo de los botones)
               const SizedBox(height: 12),
+              
+              // ← MOSTRAR filtro para TODAS las gráficas (incluyendo Día)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: FiltroFechas(
@@ -326,11 +328,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildGraficaActual() {
     switch (_tipoGraficaSeleccionada) {
       case 'Día':
-        return GraficasPanelConFiltro(fechaSeleccionada: _fechaSeleccionada); // ← Pasar fecha
+        // ← CAMBIO: Usar gráfica con filtro para respetar la fecha seleccionada
+        return GraficasPanelConFiltro(fechaSeleccionada: _fechaSeleccionada);
       case 'Mes':
-        return GraficasMesConFiltro(fechaSeleccionada: _fechaSeleccionada); // ← Pasar fecha
+        return GraficasMesConFiltro(fechaSeleccionada: _fechaSeleccionada);
       case 'Año':
-        return GraficasAnioConFiltro(fechaSeleccionada: _fechaSeleccionada); // ← Pasar fecha
+        return GraficasAnioConFiltro(fechaSeleccionada: _fechaSeleccionada);
       default:
         return GraficasPanelConFiltro(fechaSeleccionada: _fechaSeleccionada);
     }

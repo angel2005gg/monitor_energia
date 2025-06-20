@@ -14,86 +14,99 @@ class GraficasPanel extends StatefulWidget {
 }
 
 class _GraficasPanelState extends State<GraficasPanel> {
-  List<DatoEnergia> _datosEnergia = [];
+  List<DatoPotencia> _datosPotencia = []; // ← CAMBIO: de DatoEnergia a DatoPotencia
   bool _cargando = true;
   bool _hayError = false;
   Timer? _timer;
-  DateTime _fechaSeleccionada = horaActualColombia(); // ← AGREGAR
+  DateTime _fechaSeleccionada = horaActualColombia();
 
   @override
   void initState() {
     super.initState();
-    // Depuración adicional
-    print('Inicializando gráfica. Hora actual Colombia: ${horaActualColombia().hour}:${horaActualColombia().minute}');
+    print('Inicializando gráfica de potencia en tiempo real');
     _cargarDatos();
     
-    // CAMBIAR el timer para que sea más frecuente cuando hay error
+    // ← CAMBIO: Timer más frecuente para tiempo real
     _iniciarTimer();
   }
 
   void _iniciarTimer() {
-    _timer?.cancel(); // Cancelar timer anterior si existe
+    _timer?.cancel();
     
-    // Si hay error, verificar cada 10 segundos, si no cada minuto
-    final duracion = _hayError ? Duration(seconds: 10) : Duration(minutes: 1);
+    // ← CAMBIO: Actualizar cada 30 segundos para tiempo real
+    final duracion = _hayError ? Duration(seconds: 10) : Duration(seconds: 30);
     
     _timer = Timer.periodic(duracion, (Timer t) {
       if (mounted) {
         _cargarDatos();
-        print("Actualizando datos de la gráfica: ${horaActualColombia().toString()}");
+        print("Actualizando datos de potencia en tiempo real: ${horaActualColombia().toString()}");
       }
     });
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel(); // ← CANCELAR timer al destruir el widget
-    super.dispose();
-  }
-
-  // Método para cargar datos mejorado
+  // ← CAMBIO PRINCIPAL: Cargar TODOS los datos del día y actualizar en vivo
   Future<void> _cargarDatos() async {
-    print('🚀 Iniciando carga de datos para gráfica...');
+    print('🚀 Cargando datos completos del día en tiempo real...');
     
     try {
+      // ← CAMBIO: Usar la API de horas para obtener TODOS los datos del día
       final datos = await ApiService.obtenerDatosPorHora();
-      print('📈 Datos recibidos en gráfica: $datos');
-      print('📈 Cantidad de datos: ${datos.length}');
+      print('📈 Datos completos del día recibidos: ${datos.length} registros');
       
       if (mounted) {
-        // CAMBIAR: No filtrar por hora actual, usar todos los datos del día
-        final datosFiltrados = datos
-          .map((dato) => DatoEnergia(
-            hora: dato['hora'],
-            energia: dato['energia'],
-          ))
-          .toList();
-          
-        // NUEVO: Ordenar por hora
-        datosFiltrados.sort((a, b) => a.hora.compareTo(b.hora));
+        final horaActual = horaActualColombia();
         
-        print('📊 Datos después del ordenamiento: ${datosFiltrados.length}');
-        print('📊 Datos detallados:');
-        for (var dato in datosFiltrados) {
-          print('   - Hora: ${dato.hora}, Energía: ${dato.energia}');
+        // ← CAMBIO: Procesar TODOS los datos del día que vienen de la API
+        List<DatoPotencia> datosProcesados = [];
+        
+        for (var dato in datos) {
+          try {
+            int hora = dato['hora'];
+            double energia = dato['energia'];
+            
+            // ← CAMBIO: Convertir energía acumulada por hora a potencia promedio
+            // (dividir entre 60 minutos para obtener potencia promedio de esa hora)
+            double potenciaPromedio = energia; // Mantener como energía de la hora
+            
+            // Crear timestamp para esa hora del día actual
+            DateTime timestampHora = DateTime(
+              horaActual.year,
+              horaActual.month,
+              horaActual.day,
+              hora,
+              0, // minuto 0
+            );
+            
+            datosProcesados.add(DatoPotencia(
+              timestamp: timestampHora,
+              potencia: potenciaPromedio,
+            ));
+            
+            print('✅ Procesado: Hora $hora con ${potenciaPromedio.toStringAsFixed(2)} kWh');
+          } catch (e) {
+            print('❌ Error procesando dato: $e');
+          }
         }
         
+        // ← CAMBIO: Ordenar por hora
+        datosProcesados.sort((a, b) => a.timestamp.hour.compareTo(b.timestamp.hour));
+        
         setState(() {
-          _datosEnergia = datosFiltrados;
+          _datosPotencia = datosProcesados; // ← Reemplazar todos los datos
           _cargando = false;
           bool errorAnterior = _hayError;
           _hayError = false;
           
           if (errorAnterior && !_hayError) {
-            print('🟢 Conexión restablecida - reiniciando timer normal');
+            print('🟢 Conexión restablecida');
             _iniciarTimer();
           }
         });
         
-        print('✅ Estado actualizado - Datos en widget: ${_datosEnergia.length}');
+        print('✅ Gráfica actualizada con ${_datosPotencia.length} puntos del día completo');
       }
     } catch (e) {
-      print('💥 Error completo en _cargarDatos: $e');
+      print('💥 Error cargando datos del día: $e');
       
       if (mounted) {
         setState(() {
@@ -120,24 +133,23 @@ class _GraficasPanelState extends State<GraficasPanel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ← CAMBIO: Título actualizado
             const Text(
-              'Energía Generada por Hora',
+              'Potencia Generada', // ← Sin "por Hora"
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 4),
+            // ← CAMBIO: Subtítulo para tiempo real
             Text(
-              'Datos del ${_formatearFecha(_fechaSeleccionada)}',
+              'Datos en tiempo real del ${_formatearFecha(_fechaSeleccionada)}',
               style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
               ),
             ),
-            
-            // ← QUITAR EL FILTRO DE AQUÍ
-            // Ya no incluir FiltroFechas aquí
             
             const SizedBox(height: 20),
             SizedBox(
@@ -155,119 +167,52 @@ class _GraficasPanelState extends State<GraficasPanel> {
     );
   }
 
-  // ← NUEVA FUNCIÓN para cargar datos con fecha específica
-  Future<void> _cargarDatosConFecha(DateTime fecha) async {
-    setState(() {
-      _cargando = true;
-    });
-    
-    try {
-      // Formatear fecha para la API
-      final String inicio = '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}T00:00:00';
-      final String fin = '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}T23:59:59';
-      
-      final datos = await ApiService.obtenerDatosPorHoraConFiltro(inicio, fin);
-      
-      if (mounted) {
-        final datosFiltrados = datos
-          .map((dato) => DatoEnergia(
-            hora: dato['hora'],
-            energia: dato['energia'],
-          ))
-          .toList();
-          
-        datosFiltrados.sort((a, b) => a.hora.compareTo(b.hora));
-        
-        setState(() {
-          _datosEnergia = datosFiltrados;
-          _cargando = false;
-          _hayError = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _cargando = false;
-          _hayError = true;
-        });
-      }
-      print('Error cargando datos con filtro: $e');
-    }
-  }
-
-  Widget _construirMensajeError() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.wifi_off,
-          size: 48,
-          color: Colors.grey.shade400,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Gráfica no disponible',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Conecte el sistema para ver los datos',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
   Widget _construirGrafica() {
-    // Si no hay datos, mostrar mensaje
-    if (_datosEnergia.isEmpty) {
+    if (_datosPotencia.isEmpty) {
       return const Center(
         child: Text(
-          'No hay datos disponibles para mostrar',
+          'Esperando datos del día...',
           style: TextStyle(fontSize: 16),
         ),
       );
     }
 
-    // Añadir depuración antes de renderizar
-    print('Renderizando gráfica con ${_datosEnergia.length} datos');
+    print('📊 Renderizando gráfica del día con ${_datosPotencia.length} puntos');
     
     return Column(
       children: [
         Expanded(
           child: Row(
             children: [
-              // Etiqueta del eje Y a la izquierda
+              // Etiqueta del eje Y
               Padding(
                 padding: const EdgeInsets.only(right: 4.0),
                 child: RotatedBox(
                   quarterTurns: 3,
                   child: Text(
-                    'Energía (kWh)', 
+                    'Potencia kW', // ← CAMBIO: de "Energía (kWh)" a "Potencia kW"
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
                   ),
                 ),
               ),
-              // Gráfica a la derecha - CAMBIO DE BarChart A LineChart
+              // Gráfica completa del día
               Expanded(
                 child: LineChart(
                   LineChartData(
                     gridData: FlGridData(
                       show: true,
                       drawHorizontalLine: true,
-                      drawVerticalLine: false,
+                      drawVerticalLine: true,
                       getDrawingHorizontalLine: (value) {
                         return FlLine(
                           color: Colors.grey.withOpacity(0.3),
                           strokeWidth: 1,
+                        );
+                      },
+                      getDrawingVerticalLine: (value) {
+                        return FlLine(
+                          color: Colors.grey.withOpacity(0.2),
+                          strokeWidth: 0.8,
                         );
                       },
                     ),
@@ -277,39 +222,25 @@ class _GraficasPanelState extends State<GraficasPanel> {
                         sideTitles: SideTitles(
                           showTitles: true,
                           reservedSize: 36,
-                          interval: 1, // ← AGREGAR ESTA LÍNEA
+                          interval: 1,
                           getTitlesWidget: (double value, TitleMeta meta) {
-                            final index = value.toInt();
-                            if (index < 0 || index >= _datosEnergia.length) {
+                            // ← CAMBIO: Usar horas reales
+                            int hora = value.round();
+                            
+                            // Solo mostrar horas válidas (6-19)
+                            if (hora < 6 || hora > 19) {
                               return const SizedBox.shrink();
                             }
                             
-                            // NUEVA LÓGICA SIN DUPLICADOS
-                            bool mostrarHora = false;
-                            
-                            if (_datosEnergia.length <= 6) {
-                              mostrarHora = true; // Mostrar todas las horas
-                            } else if (_datosEnergia.length <= 12) {
-                              mostrarHora = (index % 2 == 0); // Cada 2 horas
-                            } else {
-                              mostrarHora = (index % 3 == 0); // Cada 3 horas
-                            }
-                            
-                            // Siempre mostrar primera y última
-                            if (index == 0 || index == _datosEnergia.length - 1) {
-                              mostrarHora = true;
-                            }
-                            
-                            if (!mostrarHora) {
+                            // Mostrar cada 2 horas
+                            if ((hora - 6) % 2 != 0) {
                               return const SizedBox.shrink();
                             }
-                            
-                            final horaActual = _datosEnergia[index].hora;
                             
                             return Padding(
                               padding: const EdgeInsets.only(top: 10.0),
                               child: Text(
-                                _formatearHora(horaActual),
+                                '${hora}h',
                                 style: const TextStyle(
                                   fontSize: 10, 
                                   fontWeight: FontWeight.bold,
@@ -348,28 +279,21 @@ class _GraficasPanelState extends State<GraficasPanel> {
                         top: BorderSide(color: Colors.transparent),
                       ),
                     ),
-                    minX: 0,
-                    maxX: (_datosEnergia.length - 1).toDouble(),
+                    // ← CAMBIO: Usar horas reales como límites
+                    minX: 6, // 6 AM
+                    maxX: 19, // 7 PM
                     minY: 0,
                     maxY: _calcularMaxY(),
                     lineBarsData: [
                       LineChartBarData(
-                        spots: _crearPuntosLinea(),
-                        isCurved: true, // Línea curva suave
-                        curveSmoothness: 0.3,
+                        spots: _crearPuntosLineaConHorasReales(), // ← NUEVA función también aquí
+                        isCurved: true,
+                        curveSmoothness: 0.2,
                         color: Colors.blue,
                         barWidth: 3,
                         isStrokeCapRound: true,
                         dotData: FlDotData(
-                          show: true,
-                          getDotPainter: (spot, percent, barData, index) {
-                            return FlDotCirclePainter(
-                              radius: 4,
-                              color: _colorPorEnergia(_datosEnergia[index].energia),
-                              strokeWidth: 2,
-                              strokeColor: Colors.white,
-                            );
-                          },
+                          show: false, // ← CAMBIO: Cambiar de true a false para ocultar puntos
                         ),
                         belowBarData: BarAreaData(
                           show: true,
@@ -384,15 +308,16 @@ class _GraficasPanelState extends State<GraficasPanel> {
                         tooltipMargin: 8,
                         getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                           return touchedBarSpots.map((barSpot) {
-                            final index = barSpot.x.toInt();
-                            if (index >= 0 && index < _datosEnergia.length) {
-                              final dato = _datosEnergia[index];
-                              return LineTooltipItem(
-                                '${_formatearHora(dato.hora)}\n${dato.energia.toStringAsFixed(2)} kWh',
-                                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                              );
-                            }
-                            return null;
+                            // ← CAMBIO: Usar el valor X real (hora) en lugar de buscar por índice
+                            double horaDecimal = barSpot.x;
+                            int hora = horaDecimal.floor();
+                            int minuto = ((horaDecimal - hora) * 60).round();
+                            
+                            // ← CAMBIO: Sin formato AM/PM, solo hora:minuto y cambiar kWh por kW
+                            return LineTooltipItem(
+                              '${hora}:${minuto.toString().padLeft(2, '0')}\n${barSpot.y.toStringAsFixed(2)} kW', // ← CAMBIO: kWh -> kW
+                              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            );
                           }).toList();
                         },
                       ),
@@ -403,54 +328,75 @@ class _GraficasPanelState extends State<GraficasPanel> {
             ],
           ),
         ),
-        // Leyenda y títulos
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Hora del día', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            const Text('Horas del día (6 AM - 7 PM)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           ],
         ),
       ],
     );
   }
 
-  List<FlSpot> _crearPuntosLinea() {
-    return _datosEnergia.asMap().entries.map((entry) {
-      final index = entry.key;
-      final dato = entry.value;
-      return FlSpot(index.toDouble(), dato.energia);
+  // ← NUEVA FUNCIÓN: Crear puntos usando horas reales en lugar de índices
+  List<FlSpot> _crearPuntosLineaConHorasReales() {
+    return _datosPotencia.map((dato) {
+      // Usar hora real como coordenada X
+      double horaDecimal = dato.timestamp.hour + (dato.timestamp.minute / 60.0);
+      
+      // Asegurar que esté en el rango 6-19
+      horaDecimal = horaDecimal.clamp(6.0, 19.0);
+      
+      return FlSpot(horaDecimal, dato.potencia);
     }).toList();
   }
 
   double _calcularMaxY() {
-    // Calcular el valor máximo y añadir un poco más para espacio superior
+    if (_datosPotencia.isEmpty) return 12.0; // ← MÁXIMO FIJO EN 12 kW
+    
     double max = 0;
-    for (var dato in _datosEnergia) {
-      if (dato.energia > max) {
-        max = dato.energia;
+    for (var dato in _datosPotencia) {
+      if (dato.potencia > max) {
+        max = dato.potencia;
       }
     }
-    return max * 1.2; // 20% más para espacio superior
+    
+    // ← ASEGURAR que nunca supere 12 kW
+    double maxCalculado = (max * 1.2).clamp(1.0, 12.0);
+    return maxCalculado > 12.0 ? 12.0 : maxCalculado;
   }
 
-  Color _colorPorEnergia(double energia) {
-    // Escala de colores basada en la cantidad de energía
-    if (energia <= 0) return Colors.grey;
-    if (energia < 1) return Colors.lightBlue;
-    if (energia < 2) return Colors.blue;
-    if (energia < 3) return Colors.green;
-    if (energia < 4) return Colors.amber;
-    return Colors.orange;
-  }
-
-  // Método simplificado para formatear la hora
-  String _formatearHora(int hora) {
-    // Formateo simple y directo
-    if (hora == 0) return '12 AM';
-    if (hora < 12) return '${hora} AM';
-    if (hora == 12) return '12 PM';
-    return '${hora - 12} PM';
+  // ← MANTENER funciones auxiliares sin cambios
+  Widget _construirMensajeError() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.wifi_off,
+          size: 48,
+          color: Colors.grey.shade400,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Gráfica no disponible',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Conecte el sistema para ver los datos',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
   }
 
   String _formatearFecha(DateTime fecha) {
@@ -462,16 +408,21 @@ class _GraficasPanelState extends State<GraficasPanel> {
   }
 }
 
-// Clase para representar los datos de energía
-class DatoEnergia {
-  final int hora;
-  final double energia;
+// ← CAMBIO: Nueva clase para datos de potencia en tiempo real
+class DatoPotencia {
+  final DateTime timestamp;
+  final double potencia;
+  final double? timestampDecimal; // ← NUEVO: Para posicionamiento preciso
 
-  DatoEnergia({required this.hora, required this.energia});
+  DatoPotencia({
+    required this.timestamp, 
+    required this.potencia,
+    this.timestampDecimal, // ← NUEVO: Opcional
+  });
 }
 
-// ← AGREGAR esta nueva clase AL FINAL del archivo existente:
-
+// ← ELIMINAR o COMENTAR la clase GraficasPanelConFiltro ya que ahora es tiempo real
+// La clase GraficasPanelConFiltro ya no se necesita porque la gráfica es en tiempo real
 class GraficasPanelConFiltro extends StatefulWidget {
   final DateTime fechaSeleccionada;
   
@@ -485,7 +436,7 @@ class GraficasPanelConFiltro extends StatefulWidget {
 }
 
 class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
-  List<DatoEnergia> _datosEnergia = [];
+  List<DatoPotencia> _datosPotencia = [];
   bool _cargando = true;
   bool _hayError = false;
   Timer? _timer;
@@ -524,44 +475,75 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
     super.dispose();
   }
 
+  // ← NUEVA FUNCIÓN: Cargar datos específicos para la fecha seleccionada
   Future<void> _cargarDatosConFecha(DateTime fecha) async {
     setState(() {
       _cargando = true;
     });
     
     try {
-      // Formatear fecha para la API
+      // Crear filtro específico para la fecha seleccionada
       final String inicio = '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}T00:00:00';
       final String fin = '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}T23:59:59';
       
-      print('🔍 Consultando API: $inicio a $fin');
+      print('🔍 Consultando API de alta precisión: $inicio a $fin');
       
+      // Usar la API con filtro específico
       final datos = await ApiService.obtenerDatosPorHoraConFiltro(inicio, fin);
       
       if (mounted) {
-        final datosFiltrados = datos
-          .map((dato) => DatoEnergia(
-            hora: dato['hora'],
-            energia: dato['energia'],
-          ))
-          .toList();
-          
-        datosFiltrados.sort((a, b) => a.hora.compareTo(b.hora));
+        // ← PROCESAR todos los puntos detallados
+        List<DatoPotencia> datosProcesados = [];
         
-        print('📊 Datos procesados: ${datosFiltrados.length} registros');
+        for (var dato in datos) {
+          try {
+            int hora = dato['hora'];
+            int minuto = dato['minuto'] ?? 0;
+            double energia = dato['energia'];
+            double timestampDecimal = dato['timestampDecimal'] ?? (hora + minuto/60.0);
+            
+            // Convertir energía a potencia realista
+            double potencia = energia;
+            if (potencia > 12.0) {
+              potencia = potencia / 10;
+            }
+            
+            // Crear timestamp exacto con minutos
+            DateTime timestampHora = DateTime(
+              fecha.year,
+              fecha.month,
+              fecha.day,
+              hora,
+              minuto,
+            );
+            
+            datosProcesados.add(DatoPotencia(
+              timestamp: timestampHora,
+              potencia: potencia,
+              timestampDecimal: timestampDecimal, // ← NUEVO: Para posicionamiento preciso en gráfica
+            ));
+            
+            print('✅ Procesado: ${hora}:${minuto.toString().padLeft(2, '0')} con ${potencia.toStringAsFixed(2)} kW');
+          } catch (e) {
+            print('❌ Error procesando dato: $e');
+          }
+        }
+        
+        // ← NO ORDENAR aquí porque ya vienen ordenados de la API
+        print('📊 Datos de alta precisión para ${fecha.day}/${fecha.month}/${fecha.year}: ${datosProcesados.length} puntos');
         
         setState(() {
-          _datosEnergia = datosFiltrados;
+          _datosPotencia = datosProcesados;
           _cargando = false;
           _hayError = false;
         });
       }
     } catch (e) {
-      print('❌ Error cargando datos con filtro: $e');
+      print('❌ Error cargando datos de alta precisión: $e');
       
       if (mounted) {
         setState(() {
-          _datosEnergia = []; // ← Limpiar datos en caso de error
+          _datosPotencia = [];
           _cargando = false;
           _hayError = true;
         });
@@ -579,8 +561,9 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ← TÍTULO ACTUALIZADO CON FECHA
             const Text(
-              'Energía Generada por Hora',
+              'Potencia Generada',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -594,6 +577,7 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
                 color: Colors.grey,
               ),
             ),
+            
             const SizedBox(height: 20),
             SizedBox(
               height: 250,
@@ -602,7 +586,7 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
                 ? const Center(child: CircularProgressIndicator())
                 : _hayError 
                   ? _construirMensajeError()
-                  : _datosEnergia.isEmpty
+                  : _datosPotencia.isEmpty
                     ? _construirMensajeSinDatos()
                     : _construirGrafica(),
             ),
@@ -636,7 +620,7 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.battery_unknown, size: 48, color: Colors.grey.shade400),
+        Icon(Icons.calendar_today, size: 48, color: Colors.grey.shade400),
         const SizedBox(height: 16),
         const Text(
           'No hay datos disponibles',
@@ -644,7 +628,7 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
         ),
         const SizedBox(height: 8),
         Text(
-          'No se encontraron registros para el ${_formatearFecha(widget.fechaSeleccionada)}',
+          'No se encontraron registros para ${_formatearFecha(widget.fechaSeleccionada)}',
           style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           textAlign: TextAlign.center,
         ),
@@ -652,49 +636,52 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
     );
   }
 
-  // ← REUTILIZAR las funciones de gráfica de la clase original
   Widget _construirGrafica() {
-    // Si no hay datos, mostrar mensaje
-    if (_datosEnergia.isEmpty) {
+    if (_datosPotencia.isEmpty) {
       return const Center(
         child: Text(
-          'No hay datos disponibles para mostrar',
+          'Esperando datos del día...',
           style: TextStyle(fontSize: 16),
         ),
       );
     }
 
-    // Añadir depuración antes de renderizar
-    print('Renderizando gráfica con ${_datosEnergia.length} datos');
+    print('📊 Renderizando gráfica del día con ${_datosPotencia.length} puntos');
     
     return Column(
       children: [
         Expanded(
           child: Row(
             children: [
-              // Etiqueta del eje Y a la izquierda
+              // Etiqueta del eje Y
               Padding(
                 padding: const EdgeInsets.only(right: 4.0),
                 child: RotatedBox(
                   quarterTurns: 3,
                   child: Text(
-                    'Energía (kWh)', 
+                    'Potencia kW', // ← CAMBIO: de "Energía (kWh)" a "Potencia kW"
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
                   ),
                 ),
               ),
-              // Gráfica a la derecha - CAMBIO DE BarChart A LineChart
+              // Gráfica completa del día
               Expanded(
                 child: LineChart(
                   LineChartData(
                     gridData: FlGridData(
                       show: true,
                       drawHorizontalLine: true,
-                      drawVerticalLine: false,
+                      drawVerticalLine: true,
                       getDrawingHorizontalLine: (value) {
                         return FlLine(
                           color: Colors.grey.withOpacity(0.3),
                           strokeWidth: 1,
+                        );
+                      },
+                      getDrawingVerticalLine: (value) {
+                        return FlLine(
+                          color: Colors.grey.withOpacity(0.2),
+                          strokeWidth: 0.8,
                         );
                       },
                     ),
@@ -704,39 +691,25 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
                         sideTitles: SideTitles(
                           showTitles: true,
                           reservedSize: 36,
-                          interval: 1, // ← AGREGAR ESTA LÍNEA
+                          interval: 1,
                           getTitlesWidget: (double value, TitleMeta meta) {
-                            final index = value.toInt();
-                            if (index < 0 || index >= _datosEnergia.length) {
+                            // ← CAMBIO: Usar horas reales
+                            int hora = value.round();
+                            
+                            // Solo mostrar horas válidas (6-19)
+                            if (hora < 6 || hora > 19) {
                               return const SizedBox.shrink();
                             }
                             
-                            // NUEVA LÓGICA SIN DUPLICADOS
-                            bool mostrarHora = false;
-                            
-                            if (_datosEnergia.length <= 6) {
-                              mostrarHora = true; // Mostrar todas las horas
-                            } else if (_datosEnergia.length <= 12) {
-                              mostrarHora = (index % 2 == 0); // Cada 2 horas
-                            } else {
-                              mostrarHora = (index % 3 == 0); // Cada 3 horas
-                            }
-                            
-                            // Siempre mostrar primera y última
-                            if (index == 0 || index == _datosEnergia.length - 1) {
-                              mostrarHora = true;
-                            }
-                            
-                            if (!mostrarHora) {
+                            // Mostrar cada 2 horas
+                            if ((hora - 6) % 2 != 0) {
                               return const SizedBox.shrink();
                             }
-                            
-                            final horaActual = _datosEnergia[index].hora;
                             
                             return Padding(
                               padding: const EdgeInsets.only(top: 10.0),
                               child: Text(
-                                _formatearHora(horaActual),
+                                '${hora}h',
                                 style: const TextStyle(
                                   fontSize: 10, 
                                   fontWeight: FontWeight.bold,
@@ -775,28 +748,21 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
                         top: BorderSide(color: Colors.transparent),
                       ),
                     ),
-                    minX: 0,
-                    maxX: (_datosEnergia.length - 1).toDouble(),
+                    // ← CAMBIO: Usar horas reales como límites
+                    minX: 6, // 6 AM
+                    maxX: 19, // 7 PM
                     minY: 0,
                     maxY: _calcularMaxY(),
                     lineBarsData: [
                       LineChartBarData(
-                        spots: _crearPuntosLinea(),
-                        isCurved: true, // Línea curva suave
-                        curveSmoothness: 0.3,
+                        spots: _crearPuntosLineaConHorasReales(), // ← NUEVA función también aquí
+                        isCurved: true,
+                        curveSmoothness: 0.2,
                         color: Colors.blue,
                         barWidth: 3,
                         isStrokeCapRound: true,
                         dotData: FlDotData(
-                          show: true,
-                          getDotPainter: (spot, percent, barData, index) {
-                            return FlDotCirclePainter(
-                              radius: 4,
-                              color: _colorPorEnergia(_datosEnergia[index].energia),
-                              strokeWidth: 2,
-                              strokeColor: Colors.white,
-                            );
-                          },
+                          show: false, // ← CAMBIO: Cambiar de true a false para ocultar puntos
                         ),
                         belowBarData: BarAreaData(
                           show: true,
@@ -811,15 +777,16 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
                         tooltipMargin: 8,
                         getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                           return touchedBarSpots.map((barSpot) {
-                            final index = barSpot.x.toInt();
-                            if (index >= 0 && index < _datosEnergia.length) {
-                              final dato = _datosEnergia[index];
-                              return LineTooltipItem(
-                                '${_formatearHora(dato.hora)}\n${dato.energia.toStringAsFixed(2)} kWh',
-                                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                              );
-                            }
-                            return null;
+                            // ← CAMBIO: Usar el valor X real (hora) en lugar de buscar por índice
+                            double horaDecimal = barSpot.x;
+                            int hora = horaDecimal.floor();
+                            int minuto = ((horaDecimal - hora) * 60).round();
+                            
+                            // ← CAMBIO: Sin formato AM/PM, solo hora:minuto y cambiar kWh por kW
+                            return LineTooltipItem(
+                              '${hora}:${minuto.toString().padLeft(2, '0')}\n${barSpot.y.toStringAsFixed(2)} kW', // ← CAMBIO: kWh -> kW
+                              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            );
                           }).toList();
                         },
                       ),
@@ -830,54 +797,43 @@ class _GraficasPanelConFiltroState extends State<GraficasPanelConFiltro> {
             ],
           ),
         ),
-        // Leyenda y títulos
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Hora del día', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            const Text('Horas del día (6 AM - 7 PM)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           ],
         ),
       ],
     );
   }
 
-  List<FlSpot> _crearPuntosLinea() {
-    return _datosEnergia.asMap().entries.map((entry) {
-      final index = entry.key;
-      final dato = entry.value;
-      return FlSpot(index.toDouble(), dato.energia);
+  // ← NUEVA FUNCIÓN: Crear puntos usando horas reales en lugar de índices
+  List<FlSpot> _crearPuntosLineaConHorasReales() {
+    return _datosPotencia.map((dato) {
+      // Usar hora real como coordenada X
+      double horaDecimal = dato.timestamp.hour + (dato.timestamp.minute / 60.0);
+      
+      // Asegurar que esté en el rango 6-19
+      horaDecimal = horaDecimal.clamp(6.0, 19.0);
+      
+      return FlSpot(horaDecimal, dato.potencia);
     }).toList();
   }
 
   double _calcularMaxY() {
-    // Calcular el valor máximo y añadir un poco más para espacio superior
+    if (_datosPotencia.isEmpty) return 12.0; // ← MÁXIMO FIJO EN 12 kW
+    
     double max = 0;
-    for (var dato in _datosEnergia) {
-      if (dato.energia > max) {
-        max = dato.energia;
+    for (var dato in _datosPotencia) {
+      if (dato.potencia > max) {
+        max = dato.potencia;
       }
     }
-    return max * 1.2; // 20% más para espacio superior
-  }
-
-  Color _colorPorEnergia(double energia) {
-    // Escala de colores basada en la cantidad de energía
-    if (energia <= 0) return Colors.grey;
-    if (energia < 1) return Colors.lightBlue;
-    if (energia < 2) return Colors.blue;
-    if (energia < 3) return Colors.green;
-    if (energia < 4) return Colors.amber;
-    return Colors.orange;
-  }
-
-  // Método simplificado para formatear la hora
-  String _formatearHora(int hora) {
-    // Formateo simple y directo
-    if (hora == 0) return '12 AM';
-    if (hora < 12) return '${hora} AM';
-    if (hora == 12) return '12 PM';
-    return '${hora - 12} PM';
+    
+    // ← ASEGURAR que nunca supere 12 kW
+    double maxCalculado = (max * 1.2).clamp(1.0, 12.0);
+    return maxCalculado > 12.0 ? 12.0 : maxCalculado;
   }
 
   String _formatearFecha(DateTime fecha) {

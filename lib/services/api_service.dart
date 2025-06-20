@@ -82,7 +82,8 @@ class ApiService {
   // ✅ ACTUALIZAR: Usar nueva API con clave
   static Future<List<Map<String, dynamic>>> obtenerDatosPorHora() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Uri.parse('$_baseUrl/datos/horas?apikey=$_apiKey&t=$timestamp');
+    // ← CAMBIO: Agregar parámetro para obtener datos cada 10 minutos
+    final url = Uri.parse('$_baseUrl/datos/horas?apikey=$_apiKey&precision=10min&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -91,7 +92,7 @@ class ApiService {
     };
     
     try {
-      print('🔄 Solicitando datos de: $url');
+      print('🔄 Solicitando datos de alta precisión: $url');
       final response = await http.get(url, headers: headers);
       
       print('📡 Status Code: ${response.statusCode}');
@@ -112,8 +113,8 @@ class ApiService {
             
             print('📅 Fecha de hoy Colombia: $fechaHoyStr');
             
-            // ← CAMBIO: Solo procesar datos que existen, no crear horas futuras
-            Map<int, double> energiaPorHora = {};
+            // ← CAMBIO: Procesar TODOS los puntos de datos (cada 10 minutos)
+            List<Map<String, dynamic>> puntosDetallados = [];
             
             for (var item in data['energiaHoras']) {
               try {
@@ -123,64 +124,93 @@ class ApiService {
                 // Verificar si es del día actual
                 String fechaItem = '${timestampColombia.year}-${timestampColombia.month.toString().padLeft(2, '0')}-${timestampColombia.day.toString().padLeft(2, '0')}';
                 
-                print('🔍 Procesando: $timestampUTC -> $timestampColombia (fecha: $fechaItem)');
-                
                 if (fechaItem == fechaHoyStr) {
                   int hora = timestampColombia.hour;
+                  int minuto = timestampColombia.minute;
                   
                   // Filtro: Solo horas entre 6 AM (6) y 7 PM (19)
                   if (hora >= 6 && hora <= 19) {
                     double energia = (item['energia'] ?? 0).toDouble();
                     
-                    // Si ya existe datos para esta hora, sumar la energía
-                    if (energiaPorHora.containsKey(hora)) {
-                      energiaPorHora[hora] = energiaPorHora[hora]! + energia;
-                    } else {
-                      energiaPorHora[hora] = energia;
-                    }
+                    // ← NUEVO: Crear timestamp exacto con hora y minuto
+                    double timestampDecimal = hora + (minuto / 60.0); // Ejemplo: 14.5 = 2:30 PM
                     
-                    print('⏰ Hora: $hora (dentro del rango 6-19), Energía acumulada: ${energiaPorHora[hora]}');
+                    puntosDetallados.add({
+                      'hora': hora,
+                      'minuto': minuto,
+                      'timestampDecimal': timestampDecimal,
+                      'energia': energia,
+                      'timestamp': timestampColombia.millisecondsSinceEpoch,
+                    });
+                    
+                    print('⏰ Punto: ${hora}:${minuto.toString().padLeft(2, '0')} (${timestampDecimal.toStringAsFixed(2)}) - Energía: ${energia.toStringAsFixed(2)}');
                   } else {
-                    print('🌙 Hora: $hora (fuera del rango 6-19) - ignorando');
+                    print('🌙 Hora: $hora:$minuto (fuera del rango 6-19) - ignorando');
                   }
-                } else {
-                  print('❌ Dato no es de hoy: $fechaItem (esperado: $fechaHoyStr)');
                 }
               } catch (e) {
                 print('❌ Error procesando timestamp ${item['timestamp']}: $e');
               }
             }
             
-            // ← CAMBIO PRINCIPAL: NO crear horas futuras, solo usar datos reales
-            if (energiaPorHora.isEmpty) {
-              print('⚠️ No hay datos del día actual en el rango 6-19');
-              // ← NO crear estructura base - dejar vacío
-              return []; // ← Devolver lista vacía en lugar de crear datos falsos
+            // ← ORDENAR por timestamp decimal para línea suave
+            puntosDetallados.sort((a, b) => a['timestampDecimal'].compareTo(b['timestampDecimal']));
+            
+            // ← NUEVO: Si no hay suficientes puntos, interpolar para suavizar
+            if (puntosDetallados.length < 10) {
+              print('⚠️ Pocos puntos disponibles (${puntosDetallados.length}), manteniendo datos reales');
+              return puntosDetallados;
             }
             
-            // ← NO completar horas faltantes - solo usar las que tienen datos reales
-            // Comentar estas líneas:
-            // for (int hora = 6; hora <= 19; hora++) {
-            //   if (!energiaPorHora.containsKey(hora)) {
-            //     energiaPorHora[hora] = 0.0;
-            //   }
-            // }
+            // ← CREAR puntos interpolados para mayor suavidad (opcional)
+            List<Map<String, dynamic>> puntosInterpolados = [];
             
-            // Convertir solo las horas que tienen datos reales
-            List<int> horasConDatos = energiaPorHora.keys.toList()..sort();
-            
-            for (int hora in horasConDatos) {
-              datosFormateados.add({
-                'hora': hora,
-                'energia': energiaPorHora[hora]!,
-                'timestamp': DateTime.now().millisecondsSinceEpoch
-              });
+            for (int i = 0; i < puntosDetallados.length - 1; i++) {
+              var puntoActual = puntosDetallados[i];
+              var puntoSiguiente = puntosDetallados[i + 1];
+              
+              // Agregar punto actual
+              puntosInterpolados.add(puntoActual);
+              
+              // ← INTERPOLAR puntos intermedios si hay más de 20 minutos de diferencia
+              double diferenciaMinutos = (puntoSiguiente['timestampDecimal'] - puntoActual['timestampDecimal']) * 60;
+              
+              if (diferenciaMinutos > 20) {
+                // Crear 1-2 puntos interpolados
+                int puntosAInterpolar = (diferenciaMinutos / 15).floor().clamp(1, 3);
+                
+                for (int j = 1; j <= puntosAInterpolar; j++) {
+                  double factor = j / (puntosAInterpolar + 1);
+                  double timestampInterpolado = puntoActual['timestampDecimal'] + 
+                    (puntoSiguiente['timestampDecimal'] - puntoActual['timestampDecimal']) * factor;
+                  double energiaInterpolada = puntoActual['energia'] + 
+                    (puntoSiguiente['energia'] - puntoActual['energia']) * factor;
+                  
+                  int horaInterpolada = timestampInterpolado.floor();
+                  int minutoInterpolado = ((timestampInterpolado - horaInterpolada) * 60).round();
+                  
+                  puntosInterpolados.add({
+                    'hora': horaInterpolada,
+                    'minuto': minutoInterpolado,
+                    'timestampDecimal': timestampInterpolado,
+                    'energia': energiaInterpolada,
+                    'timestamp': DateTime.now().millisecondsSinceEpoch,
+                    'interpolado': true, // Marcar como interpolado
+                  });
+                  
+                  print('🔄 Punto interpolado: ${horaInterpolada}:${minutoInterpolado.toString().padLeft(2, '0')} - Energía: ${energiaInterpolada.toStringAsFixed(2)}');
+                }
+              }
             }
             
-            print('📊 Datos formateados finales (solo horas con datos reales): $datosFormateados');
-            print('📊 Total de datos procesados: ${datosFormateados.length}');
+            // Agregar último punto
+            if (puntosDetallados.isNotEmpty) {
+              puntosInterpolados.add(puntosDetallados.last);
+            }
             
-            return datosFormateados;
+            print('📊 Datos de alta precisión procesados: ${puntosInterpolados.length} puntos (${puntosDetallados.length} reales)');
+            
+            return puntosInterpolados.isEmpty ? [] : puntosInterpolados;
           }
         }
         
@@ -326,8 +356,8 @@ class ApiService {
   // ✅ ACTUALIZAR: Función para datos por hora con filtro
   static Future<List<Map<String, dynamic>>> obtenerDatosPorHoraConFiltro(String inicio, String fin) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    // ✅ CAMBIAR: Agregar API key a la URL
-    final url = Uri.parse('$_baseUrl/datos/horas?apikey=$_apiKey&inicio=$inicio&fin=$fin&t=$timestamp');
+    // ← CAMBIO: Agregar parámetro de precisión también al filtro
+    final url = Uri.parse('$_baseUrl/datos/horas?apikey=$_apiKey&inicio=$inicio&fin=$fin&precision=10min&t=$timestamp');
     
     final headers = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -336,7 +366,7 @@ class ApiService {
     };
     
     try {
-      print('🔄 Solicitando datos filtrados de: $url');
+      print('🔄 Solicitando datos filtrados de alta precisión: $url');
       final response = await http.get(url, headers: headers);
       
       print('📡 Status Code: ${response.statusCode}');
@@ -357,8 +387,8 @@ class ApiService {
             
             print('📅 Fecha buscada desde filtro: $fechaBuscadaStr (inicio: $inicio)');
             
-            // ← CAMBIO: Solo procesar datos que existen, no crear horas futuras
-            Map<int, double> energiaPorHora = {};
+            // ← CAMBIO: Procesar TODOS los puntos detallados
+            List<Map<String, dynamic>> puntosDetallados = [];
             
             for (var item in data['energiaHoras']) {
               try {
@@ -368,64 +398,44 @@ class ApiService {
                 // Verificar si es de la fecha seleccionada
                 String fechaItem = '${timestampColombia.year}-${timestampColombia.month.toString().padLeft(2, '0')}-${timestampColombia.day.toString().padLeft(2, '0')}';
                 
-                print('🔍 Procesando: $timestampUTC -> $timestampColombia (fecha: $fechaItem)');
-                
                 if (fechaItem == fechaBuscadaStr) {
                   int hora = timestampColombia.hour;
+                  int minuto = timestampColombia.minute;
                   
                   // Filtro: Solo horas entre 6 AM (6) y 7 PM (19)
                   if (hora >= 6 && hora <= 19) {
                     double energia = (item['energia'] ?? 0).toDouble();
                     
-                    // Si ya existe datos para esta hora, sumar la energía
-                    if (energiaPorHora.containsKey(hora)) {
-                      energiaPorHora[hora] = energiaPorHora[hora]! + energia;
-                    } else {
-                      energiaPorHora[hora] = energia;
+                    // Normalizar si es muy alta
+                    if (energia > 12.0) {
+                      energia = energia / 10;
                     }
                     
-                    print('⏰ Hora: $hora (dentro del rango 6-19), Energía acumulada: ${energiaPorHora[hora]}');
-                  } else {
-                    print('🌙 Hora: $hora (fuera del rango 6-19) - ignorando');
+                    // ← NUEVO: Crear timestamp exacto con hora y minuto
+                    double timestampDecimal = hora + (minuto / 60.0);
+                    
+                    puntosDetallados.add({
+                      'hora': hora,
+                      'minuto': minuto,
+                      'timestampDecimal': timestampDecimal,
+                      'energia': energia,
+                      'timestamp': timestampColombia.millisecondsSinceEpoch,
+                    });
+                    
+                    print('⏰ Punto filtrado: ${hora}:${minuto.toString().padLeft(2, '0')} (${timestampDecimal.toStringAsFixed(2)}) - Energía: ${energia.toStringAsFixed(2)}');
                   }
-                } else {
-                  print('❌ Dato no es de la fecha seleccionada: $fechaItem (esperado: $fechaBuscadaStr)');
                 }
               } catch (e) {
                 print('❌ Error procesando timestamp ${item['timestamp']}: $e');
               }
             }
             
-            // ← CAMBIO PRINCIPAL: NO crear horas futuras, solo usar datos reales
-            if (energiaPorHora.isEmpty) {
-              print('⚠️ No hay datos de la fecha seleccionada en el rango 6-19');
-              // ← NO crear estructura base - dejar vacío
-              return []; // ← Devolver lista vacía en lugar de crear datos falsos
-            }
+            // ← ORDENAR por timestamp decimal
+            puntosDetallados.sort((a, b) => a['timestampDecimal'].compareTo(b['timestampDecimal']));
             
-            // ← NO completar horas faltantes - solo usar las que tienen datos reales
-            // Comentar estas líneas:
-            // for (int hora = 6; hora <= 19; hora++) {
-            //   if (!energiaPorHora.containsKey(hora)) {
-            //     energiaPorHora[hora] = 0.0;
-            //   }
-            // }
+            print('📊 Datos filtrados de alta precisión: ${puntosDetallados.length} puntos para $fechaBuscadaStr');
             
-            // Convertir solo las horas que tienen datos reales
-            List<int> horasConDatos = energiaPorHora.keys.toList()..sort();
-            
-            for (int hora in horasConDatos) {
-              datosFormateados.add({
-                'hora': hora,
-                'energia': energiaPorHora[hora]!,
-                'timestamp': DateTime.now().millisecondsSinceEpoch
-              });
-            }
-            
-            print('📊 Datos formateados finales para $fechaBuscadaStr (solo horas con datos reales): $datosFormateados');
-            print('📊 Total de datos procesados: ${datosFormateados.length}');
-            
-            return datosFormateados;
+            return puntosDetallados;
           }
         }
         
