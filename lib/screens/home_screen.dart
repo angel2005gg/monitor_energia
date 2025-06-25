@@ -183,13 +183,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     // PÁGINA 4: Panel de datos AC
                     _buildPanelCuaternario(),
                     
-                    // ← NUEVA PÁGINA 5: Panel quinario (vacío por ahora)
-                    _buildPanelQuinario(),
+                    // ← COMENTAR PÁGINA 5: Panel quinario (datos adicionales)
+                    // _buildPanelQuinario(),
                   ],
                 ),
               ),
               
-              // INDICADORES DEL CARRUSEL - ← ACTUALIZAR PARA 5 PÁGINAS
+              // INDICADORES DEL CARRUSEL - ← ACTUALIZAR PARA 4 PÁGINAS (era 5)
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -202,7 +202,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 8),
                   _buildIndicator(3),
                   const SizedBox(width: 8),
-                  _buildIndicator(4), // ← AGREGAR QUINTO INDICADOR
+                  // ← COMENTAR QUINTO INDICADOR
+                  // _buildIndicator(4), 
                 ],
               ),
               
@@ -656,11 +657,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Panel quinario (página 5 del carrusel) - VACÍO POR AHORA
+  // Panel quinario (página 5 del carrusel) - COMENTADO TEMPORALMENTE
+  /*
   Widget _buildPanelQuinario() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: const DatosAdicionales(), // ← USAR el nuevo widget
     );
   }
+  */
 }
