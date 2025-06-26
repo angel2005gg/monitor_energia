@@ -169,7 +169,7 @@ class _DatosACState extends State<DatosAC> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Corrientes y Voltajes AC',
+                  'Solar Kamati ',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
