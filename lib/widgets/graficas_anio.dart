@@ -179,7 +179,7 @@ class _GraficasAnioState extends State<GraficasAnio> {
                 child: RotatedBox(
                   quarterTurns: 3,
                   child: Text(
-                    'Energía (MWh)', 
+                    'Energía (KWh)', 
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
                   ),
                 ),
@@ -196,7 +196,7 @@ class _GraficasAnioState extends State<GraficasAnio> {
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           final dato = _datosEnergia[group.x.toInt()];
                           return BarTooltipItem(
-                            '${_nombreMes(dato.mes)}\n${dato.energia.toStringAsFixed(2)} MWh',
+                            '${_nombreMes(dato.mes)}\n${dato.energia.toStringAsFixed(2)} kWh',
                             const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           );
                         },
@@ -554,7 +554,7 @@ class _GraficasAnioConFiltroState extends State<GraficasAnioConFiltro> {
                 child: RotatedBox(
                   quarterTurns: 3,
                   child: Text(
-                    'Energía (MWh)', 
+                    'Energía (kWh)', 
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
                   ),
                 ),
@@ -571,7 +571,7 @@ class _GraficasAnioConFiltroState extends State<GraficasAnioConFiltro> {
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           final dato = _datosEnergia[group.x.toInt()];
                           return BarTooltipItem(
-                            '${_nombreMes(dato.mes)}\n${dato.energia.toStringAsFixed(2)} MWh',
+                            '${_nombreMes(dato.mes)}\n${dato.energia.toStringAsFixed(2)} KWh',
                             const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           );
                         },
